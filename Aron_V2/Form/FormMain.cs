@@ -38,6 +38,7 @@ namespace Aron_V2
 {
 	public partial class FormMain : Form
 	{
+		//test
 		//private AppConfig config;
 		private VppOutputConfig _vppOutCfg;
 
@@ -280,7 +281,7 @@ namespace Aron_V2
 			}
 			else
 			{
-				button3.Text = "UnConnected";
+				button3.Text = "Disconnected";
 				button3.BackColor = Color.Red;
 			}
 
@@ -1702,7 +1703,7 @@ namespace Aron_V2
 					{
 						this.BeginInvoke(new Action(() =>
 						{
-							button3.Text = "UnConnected";
+							button3.Text = "Disconnected";
 							button3.BackColor = Color.Red;
 						}));
 					}
