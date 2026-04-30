@@ -527,11 +527,6 @@ namespace Aron_V2
         }
 
 		#endregion
-
-		private void btnSave_Click_1(object sender, EventArgs e)
-		{
-
-		}
 	}
 
 

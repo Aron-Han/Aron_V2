@@ -24,8 +24,8 @@ namespace Aron_V2
         public static string LogMangerPath = basePath + "Log\\";
 		public static string VppOutputCfgPath = basePath + "Project\\Config\\VPPOutput.xml";
 		public static string ParameterCogfig = basePath + "Project\\Config\\Parameter.xml";
-        public static string dBPath = basePath + "mydata.db";
-        public static string UserAccessPath = basePath + "Project\\Config\\UserAccess.xml";
+        
+		public static string UserAccessPath = basePath + "Project\\Config\\UserAccess.xml";
         public static string PermissionsPath = basePath + "Project\\Config\\Permissions.xml";
 		public static string Save_Image_Root = @"C:\image\";
 
@@ -35,7 +35,13 @@ namespace Aron_V2
 
 		public static string Replay_Send_Data { get; set; }//回放图片寄存的检测数据作为相机间传递
 
-
+		public static string dBPath
+		{
+			get
+			{
+				return System.IO.Path.Combine(ProjectDatabaseDir, "VisionData.db");
+			}
+		}
 		#region [Camera config]
 		public static int CamN_Use { get; set; }//number of Cam to use
 
@@ -92,6 +98,62 @@ namespace Aron_V2
 		public static string FTP_Root { get; set; }
 
 		#endregion
+
+
+
+		public static string ProjectDir
+		{
+			get
+			{
+				string dir = System.IO.Path.Combine(
+					AppDomain.CurrentDomain.BaseDirectory,
+					"Project");
+
+				if (!System.IO.Directory.Exists(dir))
+					System.IO.Directory.CreateDirectory(dir);
+
+				return dir;
+			}
+		}
+
+		public static string ProjectConfigDir
+		{
+			get
+			{
+				string dir = System.IO.Path.Combine(ProjectDir, "Config");
+
+				if (!System.IO.Directory.Exists(dir))
+					System.IO.Directory.CreateDirectory(dir);
+
+				return dir;
+			}
+		}
+
+		public static string ProjectDatabaseDir
+		{
+			get
+			{
+				string dir = System.IO.Path.Combine(ProjectDir, "Database");
+
+				if (!System.IO.Directory.Exists(dir))
+					System.IO.Directory.CreateDirectory(dir);
+
+				return dir;
+			}
+		}
+
+		public static string ProjectStatsDir
+		{
+			get
+			{
+				string dir = System.IO.Path.Combine(ProjectDir, "Stats");
+
+				if (!System.IO.Directory.Exists(dir))
+					System.IO.Directory.CreateDirectory(dir);
+
+				return dir;
+			}
+		}
 	}
 
 	public class CameraGeneralRuntime
@@ -121,5 +183,6 @@ namespace Aron_V2
 			ctx.Post(_ => a(), null);
 		}
 	}
+
 
 }

@@ -65,7 +65,7 @@
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33333F));
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33334F));
 			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 33.33334F));
-			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 516F));
+			this.tableLayoutPanel1.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Absolute, 517F));
 			this.tableLayoutPanel1.Controls.Add(this.statusStrip1, 0, 3);
 			this.tableLayoutPanel1.Controls.Add(this.richTextBox1, 3, 1);
 			this.tableLayoutPanel1.Controls.Add(this.menuStrip1, 0, 0);
@@ -73,7 +73,7 @@
 			this.tableLayoutPanel1.Controls.Add(this.button3, 3, 2);
 			this.tableLayoutPanel1.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.tableLayoutPanel1.Location = new System.Drawing.Point(0, 0);
-			this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.tableLayoutPanel1.Margin = new System.Windows.Forms.Padding(4);
 			this.tableLayoutPanel1.Name = "tableLayoutPanel1";
 			this.tableLayoutPanel1.RowCount = 4;
 			this.tableLayoutPanel1.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Absolute, 44F));
@@ -91,7 +91,7 @@
 			this.statusStrip1.Location = new System.Drawing.Point(0, 764);
 			this.statusStrip1.Name = "statusStrip1";
 			this.statusStrip1.Padding = new System.Windows.Forms.Padding(2, 0, 21, 0);
-			this.statusStrip1.Size = new System.Drawing.Size(349, 31);
+			this.statusStrip1.Size = new System.Drawing.Size(348, 31);
 			this.statusStrip1.TabIndex = 11;
 			this.statusStrip1.Text = "statusStrip1";
 			// 
@@ -104,10 +104,10 @@
 			// richTextBox1
 			// 
 			this.richTextBox1.Dock = System.Windows.Forms.DockStyle.Fill;
-			this.richTextBox1.Location = new System.Drawing.Point(1051, 48);
-			this.richTextBox1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.richTextBox1.Location = new System.Drawing.Point(1050, 48);
+			this.richTextBox1.Margin = new System.Windows.Forms.Padding(4);
 			this.richTextBox1.Name = "richTextBox1";
-			this.richTextBox1.Size = new System.Drawing.Size(509, 624);
+			this.richTextBox1.Size = new System.Drawing.Size(510, 624);
 			this.richTextBox1.TabIndex = 0;
 			this.richTextBox1.Text = "";
 			// 
@@ -126,7 +126,7 @@
 			this.menuStrip1.Location = new System.Drawing.Point(0, 0);
 			this.menuStrip1.Name = "menuStrip1";
 			this.menuStrip1.Padding = new System.Windows.Forms.Padding(6, 1, 0, 1);
-			this.menuStrip1.Size = new System.Drawing.Size(1047, 44);
+			this.menuStrip1.Size = new System.Drawing.Size(1046, 44);
 			this.menuStrip1.TabIndex = 0;
 			this.menuStrip1.Text = "menuStrip1";
 			// 
@@ -199,19 +199,20 @@
             this.inputSettingToolStripMenuItem,
             this.outputSettingToolStripMenuItem});
 			this.profinetToolStripMenuItem.Name = "profinetToolStripMenuItem";
-			this.profinetToolStripMenuItem.Size = new System.Drawing.Size(178, 34);
+			this.profinetToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
 			this.profinetToolStripMenuItem.Text = "Profinet";
 			// 
 			// inputSettingToolStripMenuItem
 			// 
 			this.inputSettingToolStripMenuItem.Name = "inputSettingToolStripMenuItem";
-			this.inputSettingToolStripMenuItem.Size = new System.Drawing.Size(240, 34);
+			this.inputSettingToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
 			this.inputSettingToolStripMenuItem.Text = "Input Setting";
+			this.inputSettingToolStripMenuItem.Click += new System.EventHandler(this.inputSettingToolStripMenuItem_Click);
 			// 
 			// outputSettingToolStripMenuItem
 			// 
 			this.outputSettingToolStripMenuItem.Name = "outputSettingToolStripMenuItem";
-			this.outputSettingToolStripMenuItem.Size = new System.Drawing.Size(240, 34);
+			this.outputSettingToolStripMenuItem.Size = new System.Drawing.Size(270, 34);
 			this.outputSettingToolStripMenuItem.Text = "Output Setting";
 			this.outputSettingToolStripMenuItem.Click += new System.EventHandler(this.outputSettingToolStripMenuItem_Click);
 			// 
@@ -276,23 +277,23 @@
 			this.tableLayoutPanel5.ColumnStyles.Add(new System.Windows.Forms.ColumnStyle(System.Windows.Forms.SizeType.Percent, 50F));
 			this.tableLayoutPanel5.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.tableLayoutPanel5.Location = new System.Drawing.Point(4, 48);
-			this.tableLayoutPanel5.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.tableLayoutPanel5.Margin = new System.Windows.Forms.Padding(4);
 			this.tableLayoutPanel5.Name = "tableLayoutPanel5";
 			this.tableLayoutPanel5.RowCount = 2;
 			this.tableLayoutPanel1.SetRowSpan(this.tableLayoutPanel5, 2);
 			this.tableLayoutPanel5.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
 			this.tableLayoutPanel5.RowStyles.Add(new System.Windows.Forms.RowStyle(System.Windows.Forms.SizeType.Percent, 50F));
-			this.tableLayoutPanel5.Size = new System.Drawing.Size(1039, 699);
+			this.tableLayoutPanel5.Size = new System.Drawing.Size(1038, 699);
 			this.tableLayoutPanel5.TabIndex = 10;
 			// 
 			// button3
 			// 
 			this.button3.Dock = System.Windows.Forms.DockStyle.Fill;
 			this.button3.Font = new System.Drawing.Font("Microsoft Sans Serif", 15.75F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.button3.Location = new System.Drawing.Point(1051, 680);
-			this.button3.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.button3.Location = new System.Drawing.Point(1050, 680);
+			this.button3.Margin = new System.Windows.Forms.Padding(4);
 			this.button3.Name = "button3";
-			this.button3.Size = new System.Drawing.Size(509, 67);
+			this.button3.Size = new System.Drawing.Size(510, 67);
 			this.button3.TabIndex = 7;
 			this.button3.Text = "button3";
 			this.button3.UseVisualStyleBackColor = true;
@@ -305,7 +306,7 @@
 			this.Controls.Add(this.tableLayoutPanel1);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.MainMenuStrip = this.menuStrip1;
-			this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.Margin = new System.Windows.Forms.Padding(4);
 			this.Name = "FormMain";
 			this.Text = "Visual Inspection";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormMain_FormClosing);

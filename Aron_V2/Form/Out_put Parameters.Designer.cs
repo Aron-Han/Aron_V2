@@ -41,7 +41,7 @@
 			// 
 			this.dataGridView1.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
 			this.dataGridView1.Location = new System.Drawing.Point(16, 105);
-			this.dataGridView1.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.dataGridView1.Margin = new System.Windows.Forms.Padding(4);
 			this.dataGridView1.Name = "dataGridView1";
 			this.dataGridView1.RowHeadersWidth = 62;
 			this.dataGridView1.RowTemplate.Height = 23;
@@ -62,7 +62,7 @@
 			// 
 			this.CboJob.FormattingEnabled = true;
 			this.CboJob.Location = new System.Drawing.Point(92, 19);
-			this.CboJob.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.CboJob.Margin = new System.Windows.Forms.Padding(4);
 			this.CboJob.Name = "CboJob";
 			this.CboJob.Size = new System.Drawing.Size(97, 26);
 			this.CboJob.TabIndex = 10;
@@ -70,18 +70,17 @@
 			// btnSave
 			// 
 			this.btnSave.Location = new System.Drawing.Point(1404, 580);
-			this.btnSave.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.btnSave.Margin = new System.Windows.Forms.Padding(4);
 			this.btnSave.Name = "btnSave";
 			this.btnSave.Size = new System.Drawing.Size(112, 66);
 			this.btnSave.TabIndex = 16;
 			this.btnSave.Text = "Save";
 			this.btnSave.UseVisualStyleBackColor = true;
-			this.btnSave.Click += new System.EventHandler(this.btnSave_Click_1);
 			// 
 			// btnAdd
 			// 
 			this.btnAdd.Location = new System.Drawing.Point(16, 57);
-			this.btnAdd.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.btnAdd.Margin = new System.Windows.Forms.Padding(4);
 			this.btnAdd.Name = "btnAdd";
 			this.btnAdd.Size = new System.Drawing.Size(112, 40);
 			this.btnAdd.TabIndex = 18;
@@ -108,7 +107,7 @@
 			this.Controls.Add(this.label1);
 			this.Controls.Add(this.CboJob);
 			this.Controls.Add(this.dataGridView1);
-			this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+			this.Margin = new System.Windows.Forms.Padding(4);
 			this.Name = "Out_put_Parameters";
 			this.Text = "Out_put_Parameters";
 			this.Load += new System.EventHandler(this.Out_put_Parameters_Load);

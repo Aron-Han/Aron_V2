@@ -38,8 +38,6 @@ namespace Aron_V2
 {
 	public partial class FormMain : Form
 	{
-		//test
-		string test = "test";
 		//private AppConfig config;
 		private VppOutputConfig _vppOutCfg;
 
@@ -249,7 +247,14 @@ namespace Aron_V2
 
 			ReplayImage(uc.Name, uc.PosID, uc.JobID, uc.Channel);
 		}
+		private void inputSettingToolStripMenuItem_Click(object sender, EventArgs e)
+		{
+			using (var f = new FormPlcInputParameters())
+			{
+				f.ShowDialog(this);
+			}
 
+		}
 
 		#endregion
 
@@ -447,12 +452,9 @@ namespace Aron_V2
 				gate.Wait();
 				try
 				{
-					// 2) Clear Result（四个 bit 任一个为 '1'，就清当前通道）
-					bool clrAny =
-						(input_Parameters.CharDigitAt(str, input_Parameters.IdxClrCh0) == 1) ||
-						(input_Parameters.CharDigitAt(str, input_Parameters.IdxClrCh1) == 1) ||
-						(input_Parameters.CharDigitAt(str, input_Parameters.IdxClrCh2) == 1) ||
-						(input_Parameters.CharDigitAt(str, input_Parameters.IdxClrCh3) == 1);
+					// 1) Clear Result
+					// 从 PlcInput.xml 输入配置表读取当前 channel 的清结果信号地址
+					bool clrAny = input_Parameters.GetClear(str, channel);
 
 					if (clrAny)
 					{
@@ -464,34 +466,23 @@ namespace Aron_V2
 							CC24_Comm.Instance().SendData(clearresult, 0, channel);
 							CC24_Comm.Instance().mNdm.NotifySystemStatus(true, false);
 						}
+
 						LogChangeEventArgs.Set("Log", $"ClearResult channel{channel}", Color.Black);
 						return;
 					}
 
-					// 3) Pos and Job
-					int pos0 = input_Parameters.CharDigitAt(str, input_Parameters.IdxPosCh0);
-					int pos1 = input_Parameters.CharDigitAt(str, input_Parameters.IdxPosCh1);
-					int pos2 = input_Parameters.CharDigitAt(str, input_Parameters.IdxPosCh2);
-					int pos3 = input_Parameters.CharDigitAt(str, input_Parameters.IdxPosCh3);
-
-					int jobDigit0 = input_Parameters.CharDigitAt(str, input_Parameters.IdxJobCh0);
-					int jobDigit1 = input_Parameters.CharDigitAt(str, input_Parameters.IdxJobCh1);
-					int jobDigit2 = input_Parameters.CharDigitAt(str, input_Parameters.IdxJobCh2);
-					int jobDigit3 = input_Parameters.CharDigitAt(str, input_Parameters.IdxJobCh3);
+					// 2) Job / Pos
+					// 从 PlcInput.xml 输入配置表读取当前 channel 的 Job号 和 Pos号
+					int wantJobDigit = input_Parameters.GetJobDigit(str, channel);
+					int wantPosDigit = input_Parameters.GetPosDigit(str, channel);
 
 					var cfg = Global.CurrentConfig;
 
-					#region[ChangeJob and pos]
-					int wantJobDigit = (channel == 0) ? jobDigit0 :
-					   (channel == 1) ? jobDigit1 :
-					   (channel == 2) ? jobDigit2 : jobDigit3;
-
-					int wantPosDigit = (channel == 0) ? pos0 :
-							   (channel == 1) ? pos1 :
-							   (channel == 2) ? pos2 : pos3;
+					#region [ChangeJob and Pos]
 
 					bool needJobChange = true;
 					var currentShown = Global.Model_JobID_Send[channel];
+
 					if (!string.IsNullOrEmpty(currentShown)
 						&& currentShown.StartsWith("Job", StringComparison.OrdinalIgnoreCase)
 						&& int.TryParse(currentShown.Substring(3), out var shownDigit)
@@ -506,10 +497,13 @@ namespace Aron_V2
 						if (vr.Ok)
 						{
 							LogChangeEventArgs.Set("Log", $"Start Change Job: {vr.JobName}.{vr.CamName}.{vr.PosName} (Ch={channel})", Color.Black);
+
 							JobChange(channel, wantJobDigit, wantPosDigit.ToString());
+
 							Global.Model_JobID_Send[channel] = Global.Model_JobID[channel];
 							Global.Position_ID[channel] = wantPosDigit.ToString();
 							Global.Position_ID_Send[channel] = Global.Position_ID[channel];
+
 							LogChangeEventArgs.Set("Log", $"Change Job Complete: {vr.JobName}.{vr.CamName}.{vr.PosName} (Ch={channel})", Color.Green);
 							DataChangedEventArgs.Set("PosID" + channel, vr.PosName.Substring(vr.PosName.Length - 1, 1));
 						}
@@ -525,6 +519,7 @@ namespace Aron_V2
 						{
 							Global.Position_ID[channel] = wantPosDigit.ToString();
 							Global.Position_ID_Send[channel] = Global.Position_ID[channel];
+
 							LogChangeEventArgs.Set("Log", $"Change Pos Complete: {vr2.CamName}.{vr2.PosName} (Ch={channel})", Color.Green);
 							DataChangedEventArgs.Set("PosID" + channel, vr2.PosName.Substring(vr2.PosName.Length - 1, 1));
 						}
@@ -541,56 +536,30 @@ namespace Aron_V2
 							}
 						}
 					}
+
 					#endregion
 
-					// 5) PartCode
-					switch (channel)
-					{
-						case 0:
-							{
-								var part = input_Parameters.SafeSlice(str, input_Parameters.IdxPartCh0, input_Parameters.PartLen);
-								Global.PartCode[0] = part;
-								LogChangeEventArgs.Set("Log",
-									$"Channel0  JobID:{Global.Model_JobID_Send[0]}  PosID:{Global.Position_ID_Send[0]}  PartCode:{Global.PartCode[0]}",
-									Color.Green);
-								break;
-							}
-						case 1:
-							{
-								var part = input_Parameters.SafeSlice(str, input_Parameters.IdxPartCh1, input_Parameters.PartLen);
-								Global.PartCode[1] = part;
-								LogChangeEventArgs.Set("Log",
-									$"Channel1  JobID:{Global.Model_JobID_Send[1]}  PosID:{Global.Position_ID_Send[1]}  PartCode:{part}",
-									Color.Green);
-								break;
-							}
-						case 2:
-							{
-								var part = input_Parameters.SafeSlice(str, input_Parameters.IdxPartCh2, input_Parameters.PartLen);
-								Global.PartCode[2] = part;
-								LogChangeEventArgs.Set("Log",
-									$"Channel2  JobID:{Global.Model_JobID_Send[2]}  PosID:{Global.Position_ID_Send[2]}",
-									Color.Green);
-								break;
-							}
-						case 3:
-							{
-								var part = input_Parameters.SafeSlice(str, input_Parameters.IdxPartCh3, input_Parameters.PartLen);
-								Global.PartCode[3] = part;
-								LogChangeEventArgs.Set("Log",
-									$"Channel3  JobID:{Global.Model_JobID_Send[3]}  PosID:{Global.Position_ID_Send[3]}",
-									Color.Green);
-								break;
-							}
-					}
+					// 3) PartCode
+					// 从 PlcInput.xml 输入配置表读取当前 channel 的条码号
+					var part = input_Parameters.GetPartCode(str, channel);
+					Global.PartCode[channel] = part;
+
+					LogChangeEventArgs.Set("Log",
+						$"Channel{channel}  JobID:{Global.Model_JobID_Send[channel]}  PosID:{Global.Position_ID_Send[channel]}  PartCode:{part}",
+						Color.Green);
 
 					// ===== 回显写入 + 发送：保证 PLC 比对用的是“本次 GetData 处理后的值” =====
 					lock (Global.PlcBufferLock)
 					{
-						Global.Result_Send[PlcEchoRegion.IdxJobCh0] = input_Parameters.ToDigit(Global.Model_JobID_Send[0].Length >= 4 ? Global.Model_JobID_Send[0].Substring(3, 1) : "0");
-						Global.Result_Send[PlcEchoRegion.IdxJobCh1] = input_Parameters.ToDigit(Global.Model_JobID_Send[1].Length >= 4 ? Global.Model_JobID_Send[1].Substring(3, 1) : "0");
-						Global.Result_Send[PlcEchoRegion.IdxJobCh2] = input_Parameters.ToDigit(Global.Model_JobID_Send[2].Length >= 4 ? Global.Model_JobID_Send[2].Substring(3, 1) : "0");
-						Global.Result_Send[PlcEchoRegion.IdxJobCh3] = input_Parameters.ToDigit(Global.Model_JobID_Send[3].Length >= 4 ? Global.Model_JobID_Send[3].Substring(3, 1) : "0");
+						string jobSend0 = Global.Model_JobID_Send[0] ?? "";
+						string jobSend1 = Global.Model_JobID_Send[1] ?? "";
+						string jobSend2 = Global.Model_JobID_Send[2] ?? "";
+						string jobSend3 = Global.Model_JobID_Send[3] ?? "";
+
+						Global.Result_Send[PlcEchoRegion.IdxJobCh0] = input_Parameters.ToDigit(jobSend0.Length >= 4 ? jobSend0.Substring(3, 1) : "0");
+						Global.Result_Send[PlcEchoRegion.IdxJobCh1] = input_Parameters.ToDigit(jobSend1.Length >= 4 ? jobSend1.Substring(3, 1) : "0");
+						Global.Result_Send[PlcEchoRegion.IdxJobCh2] = input_Parameters.ToDigit(jobSend2.Length >= 4 ? jobSend2.Substring(3, 1) : "0");
+						Global.Result_Send[PlcEchoRegion.IdxJobCh3] = input_Parameters.ToDigit(jobSend3.Length >= 4 ? jobSend3.Substring(3, 1) : "0");
 
 						Global.Result_Send[PlcEchoRegion.IdxPosCh0] = input_Parameters.ToDigit(Global.Position_ID_Send[0] ?? "0");
 						Global.Result_Send[PlcEchoRegion.IdxPosCh1] = input_Parameters.ToDigit(Global.Position_ID_Send[1] ?? "0");
@@ -614,9 +583,8 @@ namespace Aron_V2
 			{
 				LogChangeEventArgs.Set("Log", "GetData error: " + ex.Message, Color.Red);
 			}
-
-
 		}
+
 
 		public static void NewTrigger(object sender, string channel)
 		{
@@ -974,7 +942,7 @@ namespace Aron_V2
 			for (int i = 0; i < Global.CamN_Use; i++)
 			{
 				UserControl_ImageShow camView = new UserControl_ImageShow();
-				_stats[i] = new CameraStats();
+				_stats[i] = new CameraStats("Cam" + (i + 1).ToString());
 
 				camView.Name = (i + 1).ToString();
 				camView.Dock = DockStyle.Fill;
@@ -2011,6 +1979,7 @@ namespace Aron_V2
 
 		#endregion
 
+		
 	}
 
 	public static class SimplePrompt

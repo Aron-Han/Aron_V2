@@ -174,8 +174,15 @@
     <Reference Include="WindowsFormsIntegration" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Form\FormPlcInputParameters .cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\FormPlcInputParameters .Designer.cs">
+      <DependentUpon>FormPlcInputParameters .cs</DependentUpon>
+    </Compile>
     <Compile Include="FtpHelper.cs" />
     <Compile Include="LicenseMonitor.cs" />
+    <Compile Include="Profinet\PlcInputConfig.cs" />
     <Compile Include="StartUP\Bootstrap.cs" />
     <Compile Include="Count\CameraStats.cs" />
     <Compile Include="CamRunResult.cs" />
@@ -273,6 +280,9 @@
     <Compile Include="Parameters\XmlConfigHelper.cs" />
     <Compile Include="Login\UserStore.cs" />
     <Compile Include="SaveImage\VpImageutil.cs" />
+    <EmbeddedResource Include="Form\FormPlcInputParameters .resx">
+      <DependentUpon>FormPlcInputParameters .cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Form\Algorithm.resx">
       <DependentUpon>Algorithm.cs</DependentUpon>
     </EmbeddedResource>
