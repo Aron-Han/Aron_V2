@@ -38,8 +38,6 @@ namespace Aron_V2
 {
 	public partial class FormMain : Form
 	{
-		//test
-		string test = "test";
 		//private AppConfig config;
 		private VppOutputConfig _vppOutCfg;
 
