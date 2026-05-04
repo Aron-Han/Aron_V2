@@ -1461,7 +1461,11 @@ namespace Aron_V2
 
 		private void UseAllCamResults(string allResultString)
 		{
-			LogChangeEventArgs.Set("Log", "Slave camera Inspection Complete," + allResultString, Color.Black);
+			allResultString = (allResultString ?? "").TrimEnd('\r', '\n');
+
+			LogChangeEventArgs.Set("Log",
+				"Slave camera Inspection Complete," + allResultString,
+				Color.Black);
 		}
 
 
