@@ -602,7 +602,7 @@ namespace Aron_V2
 				try
 				{
 					var main = Application.OpenForms["FormMain"] as FormMain;
-					LogChangeEventArgs.Set("Log", "Receive Trigger: " + channel, Color.Black);
+					LogChangeEventArgs.Set("Log", "Receive Trigger: " + channel, Color.Green);
 
 					// 用 PLC 已经比对过的那套状态做快照
 					string jobSnap = Global.Model_JobID[chan];

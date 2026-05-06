@@ -555,7 +555,7 @@ namespace Aron_V2
 			// 通知主窗体（如果你有这个事件）
 			ConfigSaved?.Invoke(this, EventArgs.Empty);
 
-			MessageBox.Show("相机已删除。");
+			MessageBox.Show("Camera deleted。");
 		}
 
 		private bool DeleteCamera(AppConfig cfg, string jobName, string camName)

@@ -93,7 +93,7 @@ namespace Aron_V2
 			if (errs.Length > 0)
 			{
 				MessageBox.Show(
-					"保存失败：\r\n" + string.Join("\r\n", errs),
+					"Save Failed：\r\n" + string.Join("\r\n", errs),
 					"Input Config Error",
 					MessageBoxButtons.OK,
 					MessageBoxIcon.Warning);
@@ -127,13 +127,13 @@ namespace Aron_V2
 
 			if (_rows.Count != 4)
 			{
-				errs.Add("输入配置必须固定为 4 个通道");
+				errs.Add("The input configuration must be fixed at 4 channels");
 			}
 
 			foreach (var r in _rows)
 			{
 				if (r.Channel < 0 || r.Channel > 3)
-					errs.Add("Channel 只能是 0~3");
+					errs.Add("Channel only can be 0~3");
 
 				CheckRange(errs, r.Channel, "Clear", r.ClearStart, r.ClearLength);
 				CheckRange(errs, r.Channel, "Job", r.JobStart, r.JobLength);
@@ -148,13 +148,13 @@ namespace Aron_V2
 		{
 			if (start < 0 || start >= PLC_BUFFER_SIZE)
 			{
-				errs.Add($"Channel{channel} {name} Start 超出范围：{start}");
+				errs.Add($"Channel{channel} {name} Start out of range：{start}");
 				return;
 			}
 
 			if (len <= 0 || start + len > PLC_BUFFER_SIZE)
 			{
-				errs.Add($"Channel{channel} {name} Length 非法：Start={start}, Length={len}");
+				errs.Add($"Channel{channel} {name} Length illegal：Start={start}, Length={len}");
 			}
 		}
 

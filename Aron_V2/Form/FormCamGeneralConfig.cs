@@ -411,7 +411,7 @@ namespace Aron_V2
 
             // 落盘一次（确保只弹一次）
             XmlConfigHelper.Save(_config, _configPath);
-            MessageBox.Show("保存成功！", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show("Saved successfully！", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
             // 通知外部（如果主窗体订阅了，确保只订阅一次）
             var h = ConfigSaved;

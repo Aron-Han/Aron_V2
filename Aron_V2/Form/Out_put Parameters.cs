@@ -250,8 +250,8 @@ namespace Aron_V2
 
 			if (_gridHasErrors || errs.Count > 0)
 			{
-				MessageBox.Show("保存失败：\r\n" + string.Join("\r\n", errs),
-					"校验未通过", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				MessageBox.Show("Save failed：\r\n" + string.Join("\r\n", errs),
+					"Verification failed", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 				return;
 			}
 
@@ -312,11 +312,11 @@ namespace Aron_V2
 			for (int i = 0; i < rows.Count; i++)
 			{
 				var r = rows[i];
-				if (string.IsNullOrWhiteSpace(r.Cam)) errs.Add($"第 {i + 1} 行：Cam 不能为空");
-				if (string.IsNullOrWhiteSpace(r.Name)) errs.Add($"第 {i + 1} 行：Name 不能为空");
-				if (string.IsNullOrWhiteSpace(r.Source)) errs.Add($"第 {i + 1} 行：Source 不能为空");
-				if (r.Start < 0 || r.Start >= MaxBytes) errs.Add($"第 {i + 1} 行：Start 超界(0~{MaxBytes - 1})");
-				if (r.Length <= 0 || r.Start + r.Length > MaxBytes) errs.Add($"第 {i + 1} 行：Length 非法或越界");
+				if (string.IsNullOrWhiteSpace(r.Cam)) errs.Add($" {i + 1} line：Cam can not be null");
+				if (string.IsNullOrWhiteSpace(r.Name)) errs.Add($" {i + 1} line：Name can not be null空");
+				if (string.IsNullOrWhiteSpace(r.Source)) errs.Add($" {i + 1} line：Source can not be null");
+				if (r.Start < 0 || r.Start >= MaxBytes) errs.Add($" {i + 1} line：Start Overlap (0~{MaxBytes - 1})");
+				if (r.Length <= 0 || r.Start + r.Length > MaxBytes) errs.Add($" {i + 1} line：Length Illegal or cross-border");
 			}
 
 			// 区间重叠校验（同 Channel 下）
@@ -329,7 +329,7 @@ namespace Aron_V2
 					int prevEnd = list[i - 1].Start + list[i - 1].Length - 1;
 					if (list[i].Start <= prevEnd)
 					{
-						errs.Add($"Channel {g.Key} 上区间重叠：[{list[i - 1].Start},{prevEnd}] 与 [{list[i].Start},{list[i].Start + list[i].Length - 1}]");
+						errs.Add($"Channel {g.Key} Overlap of upper intervals：[{list[i - 1].Start},{prevEnd}] 与 [{list[i].Start},{list[i].Start + list[i].Length - 1}]");
 					}
 				}
 			}
@@ -357,8 +357,8 @@ namespace Aron_V2
 
 			if (conflict != null)
 			{
-				error = $"Job={jobName} 的 Channel={conflict.Channel} 被配置成由多台相机输出：{string.Join(", ", conflict.Cams)}。\r\n" +
-						$"同一通道应只由一台主相机负责发送，请修正。";
+				error = $"Job={jobName}  Channel={conflict.Channel} Configured to output from multiple cameras：{string.Join(", ", conflict.Cams)}。\r\n" +
+						$"Only one main camera should be responsible for sending on the same channel. Please correct this。";
 				return false;
 			}
 			return true;
@@ -456,16 +456,16 @@ namespace Aron_V2
 					// 越界
 					if (s.End >= PLC_BUFFER_SIZE || s.Length <= 0)
 					{
-						MarkRowError(s.RowIndex, "Start", "越界/非法");
-						MarkRowError(s.RowIndex, "Length", "越界/非法");
+						MarkRowError(s.RowIndex, "Start", "Illegal");
+						MarkRowError(s.RowIndex, "Length", "Illegal");
 					}
 					// 与前一个重叠
 					if (i > 0 && arr[i].Start <= arr[i - 1].End)
 					{
-						MarkRowError(arr[i - 1].RowIndex, "Start", "地址重叠");
-						MarkRowError(arr[i - 1].RowIndex, "Length", "地址重叠");
-						MarkRowError(arr[i].RowIndex, "Start", "地址重叠");
-						MarkRowError(arr[i].RowIndex, "Length", "地址重叠");
+						MarkRowError(arr[i - 1].RowIndex, "Start", "Address overlap");
+						MarkRowError(arr[i - 1].RowIndex, "Length", "Address overlap");
+						MarkRowError(arr[i].RowIndex, "Start", "Address overlap");
+						MarkRowError(arr[i].RowIndex, "Length", "Address overlap");
 					}
 				}
 			}
