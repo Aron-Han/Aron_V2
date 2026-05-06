@@ -267,14 +267,14 @@ namespace Aron_V2
                     mNdm.NotifyAcquisitionReady(1);
                     mNdm.NotifyAcquisitionReady(2);
                     mNdm.NotifyAcquisitionReady(3);
-                    DataChangedEventArgs.Set("Profinet", "Connect");
+                    DataChangedEventArgs.Set("Profinet", "Online");
                 }
             }
             else
             {
                 _isConnected = false;                  //通讯卡断开
 				waitForProtocol.Enabled = true;
-				DataChangedEventArgs.Set("Profinet", "Disconnect");
+				DataChangedEventArgs.Set("Profinet", "Offline");
 			}
 		}
 

@@ -282,12 +282,12 @@ namespace Aron_V2
 			ThreadPool.QueueUserWorkItem(new WaitCallback(InI_Porfinet), this);
 			if (CC24_Comm.Instance().IsConnected)
 			{
-				button3.Text = "Connected";
+				button3.Text = "Online";
 				button3.BackColor = Color.Green;
 			}
 			else
 			{
-				button3.Text = "Disconnected";
+				button3.Text = "Offline";
 				button3.BackColor = Color.Red;
 			}
 
@@ -895,8 +895,8 @@ namespace Aron_V2
 					BeginInvoke(new Action(() =>
 					{
 						this.button3.Text = value.ToString();
-						this.button3.BackColor = (value.ToString() == "Connect") ? Color.Green : Color.Red;
-						if (value.ToString() == "Connect")
+						this.button3.BackColor = (value.ToString() == "Online") ? Color.Green : Color.Red;
+						if (value.ToString() == "Online")
 							LogChangeEventArgs.Set("Log", "InI CC24 OK！", Color.Green);
 					}));
 
@@ -1676,7 +1676,7 @@ namespace Aron_V2
 					{
 						this.BeginInvoke(new Action(() =>
 						{
-							button3.Text = "Disconnected";
+							button3.Text = "Offline";
 							button3.BackColor = Color.Red;
 						}));
 					}
