@@ -232,7 +232,7 @@ namespace Aron_V2
 			if (handler != null)
 				handler(this, EventArgs.Empty);
 
-			MessageBox.Show("保存成功！");
+			MessageBox.Show("Save Successful！");
 		}
 
 		private PositionGeneralConfig CreateDefaultPositionGeneral()

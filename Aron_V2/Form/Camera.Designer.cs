@@ -193,6 +193,7 @@
 			this.Btn_Load.TabIndex = 9;
 			this.Btn_Load.Text = "Load";
 			this.Btn_Load.UseVisualStyleBackColor = true;
+			this.Btn_Load.Click += new System.EventHandler(this.Btn_Load_Click);
 			// 
 			// Btn_Save
 			// 

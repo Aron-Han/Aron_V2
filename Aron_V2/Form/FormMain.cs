@@ -168,7 +168,7 @@ namespace Aron_V2
 				}
 				catch (Exception ex)
 				{
-					LogChangeEventArgs.Set("Log", "Reflash vpp output Failed：" + ex.Message, Color.Red);
+					LogChangeEventArgs.Set("Log", "Refresh VPP output failed: " + ex.Message, Color.Red);
 				}
 			};
 
@@ -321,14 +321,14 @@ namespace Aron_V2
 				}
 				else
 				{
-					LogChangeEventArgs.Set("Log", "InI CC24 Failed！", Color.Red);
+					LogChangeEventArgs.Set("Log", "Init CC24 failed!", Color.Red);
 					Thread.Sleep(2000);
 				}
 				#endregion
 			}
 			catch (Exception ex)
 			{
-				LogChangeEventArgs.Set("Log", "InI CC24 Failed！ Error Message:" + ex.ToString(), Color.Red);
+				LogChangeEventArgs.Set("Log", "Init CC24 failed. Error Message: " + ex.ToString(), Color.Red);
 			}
 		}
 
@@ -509,7 +509,7 @@ namespace Aron_V2
 						}
 						else
 						{
-							LogChangeEventArgs.Set("Log", $"Fail change to：{vr.Error} (Ch={channel})", Color.Red);
+							LogChangeEventArgs.Set("Log", $"Change failed: {vr.Error} (Ch={channel})", Color.Red);
 						}
 					}
 					else
@@ -532,7 +532,7 @@ namespace Aron_V2
 							}
 							else
 							{
-								LogChangeEventArgs.Set("Log", $"Fail change to：{vr2.Error} (Ch={channel})", Color.Red);
+								LogChangeEventArgs.Set("Log", $"Change failed: {vr2.Error} (Ch={channel})", Color.Red);
 							}
 						}
 					}
@@ -897,7 +897,7 @@ namespace Aron_V2
 						this.button3.Text = value.ToString();
 						this.button3.BackColor = (value.ToString() == "Online") ? Color.Green : Color.Red;
 						if (value.ToString() == "Online")
-							LogChangeEventArgs.Set("Log", "InI CC24 OK！", Color.Green);
+							LogChangeEventArgs.Set("Log", "Init CC24 OK!", Color.Green);
 					}));
 
 
@@ -998,7 +998,16 @@ namespace Aron_V2
 			if (string.IsNullOrWhiteSpace(title))
 				title = "Aron Vision System";
 
-			this.Text = title;
+			string buildDate = BuildInfo.BuildDate;
+
+			if (string.IsNullOrWhiteSpace(buildDate) || buildDate == "00000000_000000")
+			{
+				this.Text = title;
+			}
+			else
+			{
+				this.Text = title + " - " + buildDate;
+			}
 		}
 
 		#endregion
@@ -1107,7 +1116,7 @@ namespace Aron_V2
 							VppHelper.ApplyParametersToToolBlock(VPP, JobID, CamN, PosID, dict);
 
 							VPP.Inputs[0].Value = Global.image_Replay;
-							VPP.Inputs[1].Value = string.IsNullOrEmpty(Global.Replay_Send_Data) ? null: Global.Replay_Send_Data;
+							VPP.Inputs[1].Value = string.IsNullOrEmpty(Global.Replay_Send_Data) ? null : Global.Replay_Send_Data;
 							VPP.Run();
 							Recent_Reult = VPP.Outputs["Result_Cam"].Value.ToString();
 							string show = "";
@@ -1148,7 +1157,7 @@ namespace Aron_V2
 		public void Trigger_Failed(string CamN, string Message)
 		{
 			camViews[int.Parse(CamN.Substring(CamN.Length - 1)) - 1].SetButton_CamStatus(Color.Red, CamN + ":Offline");
-			LogChangeEventArgs.Set("Log", "Camera" + CamN + " Trigger Failed:" + Message + "After fixed，should restart software", Color.Red);
+			LogChangeEventArgs.Set("Log", "Camera " + CamN + " trigger failed: " + Message + ". After fixing the issue, please restart the software.", Color.Red);
 			lock (_sendLock)
 			{
 				CC24_Comm.Instance().Close();
@@ -1730,7 +1739,7 @@ namespace Aron_V2
 			catch
 			{
 			}
-		}     
+		}
 		#endregion
 
 		private static bool TryGetToolOutput(CogToolBlock tb, string port, out object value)
@@ -1829,14 +1838,14 @@ namespace Aron_V2
 		// 校验：根据 Job{digit}+Channel 找主相机，并校验 Pos 是否存在
 		private static ValidateResult ValidateJobCamPos(AppConfig cfg, int channel, int jobDigit, int posDigit)
 		{
-			if (cfg == null || cfg.Models == null) return ValidateResult.Fail("配置未加载");
-			if (jobDigit <= 0) return ValidateResult.Fail("无效的Job号");
-			if (posDigit <= 0) return ValidateResult.Fail("无效的Pos号");
+			if (cfg == null || cfg.Models == null) return ValidateResult.Fail("Configuration is not loaded");
+			if (jobDigit <= 0) return ValidateResult.Fail("Invalid Job number");
+			if (posDigit <= 0) return ValidateResult.Fail("Invalid Pos number");
 
 			string jobName = "Job" + jobDigit;
 			var job = cfg.Models.FirstOrDefault(m => string.Equals(m.Name, jobName, StringComparison.OrdinalIgnoreCase));
-			if (job == null) return ValidateResult.Fail($"配置中不存在 {jobName}");
-			if (job.Cameras == null || job.Cameras.Count == 0) return ValidateResult.Fail($"{jobName} 下无相机");
+			if (job == null) return ValidateResult.Fail($"Configuration does not contain {jobName}");
+			if (job.Cameras == null || job.Cameras.Count == 0) return ValidateResult.Fail($"{jobName} has no cameras configured");
 
 			CameraConfig camCfgForCh = null;
 			foreach (var cam in job.Cameras)
@@ -1853,11 +1862,11 @@ namespace Aron_V2
 				}
 				if (camCfgForCh != null) break;
 			}
-			if (camCfgForCh == null) return ValidateResult.Fail($"{jobName} 下未找到负责 Channel={channel} 的主相机");
+			if (camCfgForCh == null) return ValidateResult.Fail($"No main camera for Channel={channel} was found under {jobName}");
 
 			string posName = "Pos" + posDigit;
 			var posCfg = camCfgForCh.Positions?.FirstOrDefault(p => string.Equals(p?.Name, posName, StringComparison.OrdinalIgnoreCase));
-			if (posCfg == null) return ValidateResult.Fail($"{jobName}.{camCfgForCh.Name}.{posName} 在配置中不存在");
+			if (posCfg == null) return ValidateResult.Fail($"{jobName}.{camCfgForCh.Name}.{posName} does not exist in the configuration");
 
 			return ValidateResult.Success(jobName, camCfgForCh.Name, posName);
 		}
@@ -1865,17 +1874,17 @@ namespace Aron_V2
 		// 仅验证：当前 Job（按 Global 的记录）下，对应 Channel 的主相机里是否存在该 Pos
 		private static ValidateResult ValidatePosInCurrentJob(AppConfig cfg, int channel, int posDigit)
 		{
-			if (cfg == null || cfg.Models == null) return ValidateResult.Fail("配置未加载");
-			if (posDigit <= 0) return ValidateResult.Fail("无效的Pos号");
+			if (cfg == null || cfg.Models == null) return ValidateResult.Fail("Configuration is not loaded");
+			if (posDigit <= 0) return ValidateResult.Fail("Invalid Pos number");
 
 			var currentJob = !string.IsNullOrEmpty(Global.Model_JobID_Send[channel])
 				? Global.Model_JobID_Send[channel]
 				: Global.Model_JobID[channel];
 
-			if (string.IsNullOrEmpty(currentJob)) return ValidateResult.Fail("当前通道未选择Job");
+			if (string.IsNullOrEmpty(currentJob)) return ValidateResult.Fail("No Job is selected for the current channel");
 
 			var job = cfg.Models.FirstOrDefault(m => string.Equals(m.Name, currentJob, StringComparison.OrdinalIgnoreCase));
-			if (job == null) return ValidateResult.Fail($"配置中不存在 {currentJob}");
+			if (job == null) return ValidateResult.Fail($"Configuration does not contain {currentJob}");
 
 			CameraConfig camForCh = null;
 			foreach (var cam in job.Cameras ?? Enumerable.Empty<CameraConfig>())
@@ -1891,11 +1900,11 @@ namespace Aron_V2
 				}
 				if (camForCh != null) break;
 			}
-			if (camForCh == null) return ValidateResult.Fail($"{currentJob} 下未找到负责 Channel={channel} 的主相机");
+			if (camForCh == null) return ValidateResult.Fail($"No main camera for Channel={channel} was found under {currentJob}");
 
 			string posName = "Pos" + posDigit;
 			var posCfg = camForCh.Positions?.FirstOrDefault(p => string.Equals(p?.Name, posName, StringComparison.OrdinalIgnoreCase));
-			if (posCfg == null) return ValidateResult.Fail($"{currentJob}.{camForCh.Name}.{posName} 在配置中不存在");
+			if (posCfg == null) return ValidateResult.Fail($"{currentJob}.{camForCh.Name}.{posName} does not exist in the configuration");
 
 			return ValidateResult.Success(currentJob, camForCh.Name, posName);
 		}
@@ -1965,7 +1974,7 @@ namespace Aron_V2
 
 		private void sendDataToolStripMenuItem_Click(object sender, EventArgs e)
 		{
-			var input = SimplePrompt.Show("Manaul Receive Data", "Please Test in the Data：");
+			var input = SimplePrompt.Show("Manual Receive Data", "Please enter test data:");
 			if (string.IsNullOrWhiteSpace(input)) return;
 
 			try
@@ -1974,7 +1983,7 @@ namespace Aron_V2
 			}
 			catch (Exception ex)
 			{
-				System.Windows.Forms.MessageBox.Show("Send Failed：" + ex.Message, "Error",
+				System.Windows.Forms.MessageBox.Show("Send failed: " + ex.Message, "Error",
 					System.Windows.Forms.MessageBoxButtons.OK, System.Windows.Forms.MessageBoxIcon.Error);
 			}
 
@@ -1983,7 +1992,7 @@ namespace Aron_V2
 
 		#endregion
 
-		
+
 	}
 
 	public static class SimplePrompt

@@ -207,54 +207,65 @@ namespace Aron_V2
             dataGridView1.Columns.Add(colSecCh);
         }
 
-        private void RefreshGrid()
-        {
-            _rows.Clear();
+		private void RefreshGrid()
+		{
+			_rows.Clear();
 
-            var job = GetCurrentJob();
-            var cam = GetCurrentCam();
-            if (job == null || cam == null) return;
+			var job = GetCurrentJob();
+			var cam = GetCurrentCam();
+			if (job == null || cam == null) return;
 
-            if (cam.Positions == null || cam.Positions.Count == 0)
-            {
-                // 没有任何 Pos，给一个占位行，便于用户新增
-                _rows.Add(new PosGeneralRow
-                {
-                    Model = job.Name,
-                    Camera = cam.Name,
-                    Position = "Pos1",
-                    Exposure = "10",
-                    MainUsed = "1",
-                    MainChannel = "0",
-                    SecondUsed = "0",
-                    SecondChannel = "0"
-                });
-                return;
-            }
+			if (cam.Positions == null || cam.Positions.Count == 0)
+			{
+				// 没有任何 Pos，给一个占位行，便于用户新增
+				_rows.Add(new PosGeneralRow
+				{
+					Model = job.Name,
+					Camera = cam.Name,
 
-            // 把该 Cam 下所有 Pos 一次性列出来
-            foreach (var pos in cam.Positions)
-            {
-                var g = pos.General ?? CreateDefaultPositionGeneral();
-                _rows.Add(new PosGeneralRow
-                {
-                    Model = job.Name,
-                    Camera = cam.Name,
-                    Position = pos.Name ?? "",
-                    Exposure = g.Exposure ?? "10",
-                    MainUsed = g.MainUsed ?? "0",
-                    MainChannel = g.MainChannel ?? "0",
-                    SecondUsed = g.SecondUsed ?? "0",
-                    SecondChannel = g.SecondChannel ?? "0"
-                });
-            }
-        }
+					// 当前没有旧 Pos，所以原始 Pos 为空
+					OriginalPosition = "",
 
-        #endregion
+					Position = "Pos1",
+					Exposure = "10",
+					MainUsed = "1",
+					MainChannel = "0",
+					SecondUsed = "0",
+					SecondChannel = "0"
+				});
+				return;
+			}
 
-        #region 
+			// 把该 Cam 下所有 Pos 一次性列出来
+			foreach (var pos in cam.Positions)
+			{
+				if (pos == null) continue;
 
-        private void BtnAddRow_Click(object sender, EventArgs e)
+				var g = pos.General ?? CreateDefaultPositionGeneral();
+
+				_rows.Add(new PosGeneralRow
+				{
+					Model = job.Name,
+					Camera = cam.Name,
+
+					// 记录原始 Pos 名称，用于保存时迁移 Limit 参数
+					OriginalPosition = pos.Name ?? "",
+
+					Position = pos.Name ?? "",
+					Exposure = g.Exposure ?? "10",
+					MainUsed = g.MainUsed ?? "0",
+					MainChannel = g.MainChannel ?? "0",
+					SecondUsed = g.SecondUsed ?? "0",
+					SecondChannel = g.SecondChannel ?? "0"
+				});
+			}
+		}
+
+		#endregion
+
+		#region 
+
+		private void BtnAddRow_Click(object sender, EventArgs e)
         {
             var job = GetCurrentJob();
             var cam = GetCurrentCam();
@@ -371,58 +382,101 @@ namespace Aron_V2
             XmlConfigHelper.Save(_config, _configPath);
         }
 
-        #endregion
+		#endregion
 
-        #region 保存
+		#region 保存
 
-        private void BtnSave_Click(object sender, EventArgs e)
-        {
-            var job = GetCurrentJob();
-            var cam = GetCurrentCam();
-            if (job == null || cam == null) return;
+		private void BtnSave_Click(object sender, EventArgs e)
+		{
+			var job = GetCurrentJob();
+			var cam = GetCurrentCam();
+			if (job == null || cam == null) return;
 
-            // 确保容器存在
-            if (job.Cameras == null) job.Cameras = new List<CameraConfig>();
-            if (cam.Positions == null) cam.Positions = new List<PositionConfig>();
+			if (job.Cameras == null)
+				job.Cameras = new List<CameraConfig>();
 
-            // 先把这个 Cam 的 Pos 全清空，再用表格内容重建（支持删行）
-            cam.Positions.Clear();
+			if (cam.Positions == null)
+				cam.Positions = new List<PositionConfig>();
 
-            foreach (var r in _rows)
-            {
-                if (r == null) continue;
-                var pos = new PositionConfig
-                {
-                    Name = string.IsNullOrWhiteSpace(r.Position) ? "Pos1" : r.Position,
-                    General = new PositionGeneralConfig
-                    {
-                        Exposure = r.Exposure ?? "10",
-                        MainUsed = r.MainUsed ?? "0",
-                        MainChannel = r.MainChannel ?? "0",
-                        SecondUsed = r.SecondUsed ?? "0",
-                        SecondChannel = r.SecondChannel ?? "0"
-                    }
-                };
-                cam.Positions.Add(pos);
-            }
+			// 1) 先缓存旧 Pos，避免清空后丢失 Parameters
+			var oldPositions = cam.Positions.ToList();
 
-            // 回写 CamN（显示和存档都更新）
-            UpdateCamCountLabel();
+			var oldByName = oldPositions
+				.Where(p => p != null && !string.IsNullOrWhiteSpace(p.Name))
+				.GroupBy(p => p.Name, StringComparer.OrdinalIgnoreCase)
+				.ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
-            // 落盘一次（确保只弹一次）
-            XmlConfigHelper.Save(_config, _configPath);
-            MessageBox.Show("Saved successfully！", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			// 2) 清空并重建 Pos，支持删除行
+			cam.Positions.Clear();
 
-            // 通知外部（如果主窗体订阅了，确保只订阅一次）
-            var h = ConfigSaved;
-            if (h != null) h(this, EventArgs.Empty);
-        }
+			for (int i = 0; i < _rows.Count; i++)
+			{
+				var r = _rows[i];
+				if (r == null) continue;
 
-        #endregion
+				string newPosName = string.IsNullOrWhiteSpace(r.Position)
+					? "Pos1"
+					: r.Position.Trim();
 
-        #region 辅助类型/默认值
+				// 3) 找旧 Pos
+				// 优先用 OriginalPosition，因为用户可能把 Pos1 改成 Pos2
+				PositionConfig oldPos = null;
 
-        private static PositionGeneralConfig CreateDefaultPositionGeneral()
+				if (!string.IsNullOrWhiteSpace(r.OriginalPosition))
+				{
+					oldByName.TryGetValue(r.OriginalPosition.Trim(), out oldPos);
+				}
+
+				// 如果 OriginalPosition 没找到，再用当前 Pos 名找
+				if (oldPos == null)
+				{
+					oldByName.TryGetValue(newPosName, out oldPos);
+				}
+
+				// 最后兜底：按行号匹配，避免老版本没有 OriginalPosition 时直接丢参数
+				if (oldPos == null && i >= 0 && i < oldPositions.Count)
+				{
+					oldPos = oldPositions[i];
+				}
+
+				var pos = new PositionConfig
+				{
+					Name = newPosName,
+
+					General = new PositionGeneralConfig
+					{
+						Exposure = r.Exposure ?? "10",
+						MainUsed = r.MainUsed ?? "0",
+						MainChannel = r.MainChannel ?? "0",
+						SecondUsed = r.SecondUsed ?? "0",
+						SecondChannel = r.SecondChannel ?? "0"
+					},
+
+					// 关键：把旧的 Limit 参数带回来
+					Parameters = CloneParameters(oldPos != null ? oldPos.Parameters : null)
+				};
+
+				cam.Positions.Add(pos);
+
+				// 保存后更新原始名，避免连续保存时再次匹配错
+				r.OriginalPosition = newPosName;
+			}
+
+			UpdateCamCountLabel();
+
+			XmlConfigHelper.Save(_config, _configPath);
+
+			MessageBox.Show("Saved successfully！", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+			var h = ConfigSaved;
+			if (h != null) h(this, EventArgs.Empty);
+		}
+
+		#endregion
+
+		#region 辅助类型/默认值
+
+		private static PositionGeneralConfig CreateDefaultPositionGeneral()
         {
             return new PositionGeneralConfig
             {
@@ -436,16 +490,44 @@ namespace Aron_V2
 
         private class PosGeneralRow
         {
-            public string Model { get; set; }
-            public string Camera { get; set; }
-            public string Position { get; set; }
-            public string Exposure { get; set; }
-            public string MainUsed { get; set; }
-            public string MainChannel { get; set; }
-            public string SecondUsed { get; set; }
-            public string SecondChannel { get; set; }
-        }
+			public string Model { get; set; }
+			public string Camera { get; set; }
 
-        #endregion
-    }
+			// 原始 Pos 名称，用来在用户改名后仍然找到旧 Limit 参数
+			public string OriginalPosition { get; set; }
+
+			public string Position { get; set; }
+			public string Exposure { get; set; }
+			public string MainUsed { get; set; }
+			public string MainChannel { get; set; }
+			public string SecondUsed { get; set; }
+			public string SecondChannel { get; set; }
+		}
+
+		#endregion
+
+		#region 克隆方法
+		private static List<ParameterConfig> CloneParameters(IEnumerable<ParameterConfig> source)
+		{
+			var list = new List<ParameterConfig>();
+
+			if (source == null)
+				return list;
+
+			foreach (var p in source)
+			{
+				if (p == null) continue;
+
+				list.Add(new ParameterConfig
+				{
+					Name = p.Name,
+					Description = p.Description,
+					Value = p.Value
+				});
+			}
+
+			return list;
+		}
+		#endregion
+	}
 }
