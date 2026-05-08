@@ -1,0 +1,12 @@
+<Project>
+  <!-- Runtime builds do not need IntelliSense XML documentation files. -->
+  <PropertyGroup>
+    <AllowedReferenceRelatedFileExtensions>.pdb;.dll.config</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+  <!-- Keep designer-only settings outside the designer-managed project file.
+       Normal compilation and application startup are not affected. -->
+  <PropertyGroup Condition="'$(DesignTimeBuild)' == 'true'">
+    <SkipCompilerExecution>true</SkipCompilerExecution>
+    <ProvideCommandLineArgs>true</ProvideCommandLineArgs>
+  </PropertyGroup>
+</Project>

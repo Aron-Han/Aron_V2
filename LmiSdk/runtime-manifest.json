@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "package": "LMI GO Utilities 6.5.2.5",
+  "architecture": "AMD64",
+  "goSdkVersion": "6.5.2.5",
+  "kApiVersion": "10.3.3.22",
+  "sourceDirectory": "D:\\01-Work\\04-Software\\02-software\\LMI\\14405-6.5.2.5_SOFTWARE_GO_Utilities\\Emulator and Accelerator\\bin\\win64",
+  "stagedAtUtc": "2026-10-23T16:43:45.1910928Z",
+  "files": [
+    {
+      "name": "GoSdk.dll",
+      "sha256": "10A1231DF99AF46FB50347698BAEE76C010113A73E0157AEA3A915AF5E8AE774",
+      "fileVersion": "6.5.2.5",
+      "length": 998400
+    },
+    {
+      "name": "GoSdkNet.dll",
+      "sha256": "22A7BA504A963DC2709BA9357BECA73881D3A43BD6E3FD199425C70E630F3315",
+      "fileVersion": "6.5.2.5",
+      "length": 813056
+    },
+    {
+      "name": "kApi.dll",
+      "sha256": "DCD57B7394D93B2E9C2DFF30AE0429AE95779A120C105A9F4FB789889D2608AE",
+      "fileVersion": "10.3.3.22",
+      "length": 590848
+    },
+    {
+      "name": "kApiNet.dll",
+      "sha256": "CB9479ED4647AD2DCF534E1CB3AF4C63C164382C6E73C50D50930B72F4E1F028",
+      "fileVersion": "10.3.3.22",
+      "length": 335872
+    },
+    {
+      "name": "vcruntime140.dll",
+      "sha256": "02C6AA0E6E624411A9F19B0360A7865AB15908E26024510E5C38A9C08362C35A",
+      "fileVersion": "14.40.33810.0",
+      "length": 119888
+    },
+    {
+      "name": "ucrtbase.dll",
+      "sha256": "D93CE42CD625510B2355DE086BCD19E2C11307CCADE7BAD62B09C7F340A866BA",
+      "fileVersion": "10.0.22621.3593 (WinBuild.160101.0800)",
+      "length": 1133624
+    }
+  ]
+}
