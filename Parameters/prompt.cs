@@ -35,8 +35,8 @@ namespace Aron_V2
 				for (int row = 0; row < 3; row++) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 				lbl.AutoSize = true; lbl.Text = text; lbl.Margin = new Padding(4, 4, 4, 12);
 				txt.Dock = DockStyle.Fill; txt.MinimumSize = new Size(330, 0); txt.Text = defaultValue;
-				ok.Text = "确定"; ok.DialogResult = DialogResult.OK;
-				cancel.Text = "取消"; cancel.DialogResult = DialogResult.Cancel;
+				ok.Text = "OK"; ok.DialogResult = DialogResult.OK;
+				cancel.Text = "Cancel"; cancel.DialogResult = DialogResult.Cancel;
 				foreach (Button button in new[] { ok, cancel }) { button.AutoSize = true; button.MinimumSize = new Size(80, 32); button.Margin = new Padding(6); }
 				var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, Margin = new Padding(0, 12, 0, 0) };
 				buttons.Controls.Add(cancel); buttons.Controls.Add(ok);
@@ -44,6 +44,7 @@ namespace Aron_V2
 				form.Controls.Add(layout);
 				form.AcceptButton = ok; form.CancelButton = cancel;
 				DesktopTheme.ApplySettings(form);
+				UiLanguage.ApplyTo(form);
 				form.ResumeLayout(true);
 
 				return form.ShowDialog() == DialogResult.OK ? txt.Text : string.Empty;

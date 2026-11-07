@@ -110,6 +110,7 @@ namespace Aron_V2
 			_communicationStatus.Text = "Communicate:Null";
 			_communicationStatus.ForeColor = Color.Red;
 			statusStrip1.Items.Add(_communicationStatus);
+			InitializeResourceStatus();
             LoadCommunicationSelectionForDisplay();
 			_communicationStatusTimer.Interval = 500;
 			_communicationStatusTimer.Tick += delegate { RefreshCommunicationState(); };

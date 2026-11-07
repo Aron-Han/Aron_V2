@@ -1,0 +1,14 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Data files, NOT assembly references. No GoSDK/Cognex binding redirects. -->
+  <ItemGroup>
+    <Content Include="LmiSdk\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <Target Name="ValidatePinnedLmiSdkSource" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)Validate-LmiSdk.ps1&quot; -Directory &quot;$(MSBuildProjectDirectory)\LmiSdk&quot;" />
+  </Target>
+  <Target Name="ValidatePinnedLmiSdkOutput" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="powershell.exe -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)Validate-LmiSdk.ps1&quot; -Directory &quot;$(TargetDir)LmiSdk&quot; -ManifestPath &quot;$(MSBuildProjectDirectory)\LmiSdk\runtime-manifest.json&quot;" />
+  </Target>
+</Project>

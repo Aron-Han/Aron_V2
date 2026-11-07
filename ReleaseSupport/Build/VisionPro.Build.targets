@@ -1,0 +1,13 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- This file is imported ONLY by the one-click build via a global MSBuild
+       property. Regular Visual Studio builds remain unchanged. -->
+  <ItemGroup>
+    <Reference Remove="@(Reference)" Condition="$([System.String]::Copy('%(Reference.Identity)').StartsWith('Cognex.'))" />
+    <Compile Remove="BuildInfo.cs" />
+    <Compile Include="$(VisionProBuildInfoFile)" />
+  </ItemGroup>
+  <Import Project="$(VisionProReferencesFile)" />
+  <Target Name="RecordVisionProBuildReferences" AfterTargets="ResolveAssemblyReferences">
+    <WriteLinesToFile File="$(VisionProResolvedReferencesFile)" Lines="@(ReferencePath->'%(FusionName)|%(FullPath)')" Overwrite="true" />
+  </Target>
+</Project>

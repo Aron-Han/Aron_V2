@@ -89,6 +89,25 @@ namespace Aron_V2
 				foreach (var k in Tb.Keys.Where(k => k.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).ToList())
 				{ try { Tb[k]?.Dispose(); } catch { } Tb.Remove(k); }
 			}
+
+			// A channel owns only its currently loaded Job. Clearing the target
+			// Job alone leaves every previously selected Job resident indefinitely.
+			public static void ClearChannel(int channel)
+			{
+				lock (_jobSwitchLock)
+				{
+					string marker = "|CH" + channel + "|";
+					var keys = Acq.Keys.Concat(Tb.Keys).Where(k => k.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+					foreach (var key in keys)
+					{
+						CogAcqFifoTool acq;
+						CogToolBlock tb;
+						// Do not disconnect shared frame grabbers used by other channels.
+						if (Acq.TryGetValue(key, out acq)) { Acq.Remove(key); try { acq?.Dispose(); } catch { } }
+						if (Tb.TryGetValue(key, out tb)) { Tb.Remove(key); try { tb?.Dispose(); } catch { } }
+					}
+				}
+			}
 		}
 
 		public static class VppPath
@@ -214,8 +233,8 @@ namespace Aron_V2
 				int loadedFiles = 0, failedFiles = 0;
 				try
 				{
-					// 可选：先清理该 Job+Channel 的旧缓存
-					VppCache.ClearJobChannel(jobId, channel);
+					// Release old Job tools on this channel before loading the new Job.
+					VppCache.ClearChannel(channel);
 
 					for (int i = 0; i < Global.CamN_Use; i++)
 					{

@@ -301,7 +301,11 @@
   <ItemGroup>
     <Compile Include="BuildInfo.cs" />
     <Compile Include="Form\BrandingSettings.cs" />
-    <Compile Include="Form\Parameters_Config.Positions.cs" />
+    <Compile Include="Form\Parameters_Config.Positions.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\Parameters_Config.Inputs.cs" />
+    <Compile Include="Form\FormMain.ResourceStatus.cs" />
     <Compile Include="CameraIntegration\CameraAcquisition.cs" />
     <Compile Include="Parameters\BlankCameraVpp.cs" />
     <Compile Include="Parameters\JobCatalog.cs" />

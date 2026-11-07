@@ -161,6 +161,7 @@ namespace Aron_V2
 			surface.Layout += (s, e) => arrange();
 			Shown += (s, e) => arrange();
 			arrange();
+			UiLanguage.ApplyTo(this);
 		}
 
 		private void SetupProtocolRadio(RadioButton radio, string text, int left)
@@ -228,7 +229,7 @@ namespace Aron_V2
 
 			EventHandler handler = CommunicationSettingSaved;
 			if (handler != null) handler(this, EventArgs.Empty);
-			MessageBox.Show("Communication selection saved.", "Communication", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			MessageBox.Show(this, UiLanguage.Text("Communication selection saved."), UiLanguage.Text("Communication"), MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
 		private void Basic_Click(object sender, EventArgs e)

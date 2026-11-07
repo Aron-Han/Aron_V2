@@ -14,6 +14,33 @@ namespace Aron_V2
         private static readonly ConditionalWeakTable<object, Entry> Entries = new ConditionalWeakTable<object, Entry>();
         private static readonly Dictionary<string, string> Chinese = new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            ["Enable one protocol"] = "选择通讯协议", ["Active channel count"] = "启用通道数",
+            ["Profinet is fixed at 4 channels."] = "Profinet 固定为 4 个通道。",
+            ["Configurable: 1 to 64 channels."] = "可配置 1～64 个通道。",
+            ["Uses the standard S7 handshake, address tables, heartbeat and reconnect logic."] = "使用标准 S7 握手、地址点表、心跳及重连逻辑。",
+            ["Uses the Cognex CC24 Profinet card. Input/output buffers are limited to four channels."] = "使用 Cognex CC24 Profinet 通讯卡，输入输出固定支持 4 个通道。",
+            ["Uses the same logical handshake as S7. Socket frame encoding is configured by the project protocol."] = "使用与 S7 相同的逻辑握手，Socket 数据帧编码由项目协议配置。",
+            ["Connection Setting"] = "连接设置", ["Save & Apply"] = "保存并应用",
+            ["Communication selection saved."] = "通讯设置已保存。",
+            ["Pos:"] = "位置：", ["Job:"] = "作业：", ["New parameter"] = "新参数",
+            ["Clone Limit parameters to"] = "克隆 Limit 参数到", ["From:"] = "来源：",
+            ["S7 Setting"] = "S7 连接设置", ["S7 Input Setting"] = "S7 输入设置", ["S7 Output Setting"] = "S7 输出设置",
+            ["Profinet Input Setting"] = "Profinet 输入设置", ["Profinet Output Setting"] = "Profinet 输出设置", ["TCP/IP Setting"] = "TCP/IP 连接设置",
+            ["DB Address"] = "DB 地址", ["Result Address"] = "结果区地址", ["UserData Address"] = "用户数据区地址",
+            ["Data Type"] = "数据类型", ["Format"] = "格式", ["Length"] = "长度", ["Current Value"] = "当前值", ["Note"] = "备注",
+            ["Read All"] = "读取全部", ["Read Selected"] = "读取选中项", ["Read Channel"] = "读取通道",
+            ["Write Selected"] = "写入选中项", ["Write Channel"] = "写入通道", ["Delete Selected"] = "删除选中项",
+            ["Connect Test"] = "连接测试", ["Beat Once"] = "发送一次心跳", ["Start Heartbeat"] = "启动心跳", ["Stop Heartbeat"] = "停止心跳",
+            ["S7 Basic Parameters"] = "S7 基本参数", ["Heartbeat Parameters"] = "心跳参数", ["Manual Address Read / Write Test"] = "地址手动读写测试",
+            ["Read"] = "读取", ["Write"] = "写入", ["Save succeeded."] = "保存成功。",
+            ["JobID and PosID are required and cannot be deleted."] = "JobID 和 PosID 是固定信号，不能删除。",
+            ["Channel must be 0..3."] = "通道号必须为 0～3。",
+            ["Custom output requires both Parameter and VPP Output."] = "自定义输出必须填写参数名称和 VPP 输出引脚。",
+            ["Please select one row first."] = "请先选择一行。", ["Please select one channel row first."] = "请先选择一个通道行。",
+            ["Please enter a valid IP address."] = "请输入有效的 IP 地址。",
+            ["VPP input:"] = "VPP 输入引脚：",
+            ["Add parameter"] = "新增参数", ["Parameter name:"] = "参数名：", ["OK"] = "确定",
+            ["Clone"] = "克隆",
             ["About"] = "关于", ["Logo"] = "Logo 设置", ["Import image"] = "导入图片",
             ["Choose a logo or import a local image."] = "选择一个默认 Logo，或导入本地图片。",
             ["Save updates the window and taskbar icon. The EXE file icon updates on the next build."] = "保存后更新窗口与任务栏图标；EXE 文件图标将在下次编译时更新。",
@@ -118,10 +145,13 @@ namespace Aron_V2
         {
             if (string.IsNullOrEmpty(source)) return source;
             int spaces = source.Length - source.TrimStart().Length;
-            string key = source.TrimStart().Replace("&", "");
+            // A single & is a WinForms mnemonic; && is a literal ampersand.
+            // Designer captions also frequently contain trailing whitespace.
+            string key = System.Text.RegularExpressions.Regex.Replace(source.Trim().Replace("&&", "\u0001").Replace("&", "").Replace("\u0001", "&"), @"\s+", " ");
             if (Current == "zh-CN" && Chinese.TryGetValue(key, out string value)) return source.Substring(0, spaces) + value;
             if (Current == "zh-CN")
             {
+                if (source.StartsWith("From: ", StringComparison.Ordinal)) return "来源：" + source.Substring(6);
                 if (source.StartsWith("Protocol:", StringComparison.Ordinal)) return "通讯方式：" + source.Substring(9);
                 if (source.StartsWith("Loading page ", StringComparison.Ordinal)) return "正在加载第 " + source.Substring(13) + " 页";
                 if (source.StartsWith("Page ", StringComparison.Ordinal)) return "第 " + source.Substring(5) + " 页";

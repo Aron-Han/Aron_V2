@@ -1,0 +1,24 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Validate real resolved identities, not the version written in HintPath. -->
+  <Target Name="ValidateVisionProReferences" AfterTargets="ResolveAssemblyReferences">
+    <ItemGroup>
+      <VisionProResolved Include="@(ReferencePath)" Condition="$([System.String]::Copy('%(ReferencePath.Filename)').StartsWith('Cognex.VisionPro'))" />
+    </ItemGroup>
+    <GetAssemblyIdentity AssemblyFiles="@(VisionProResolved)">
+      <Output TaskParameter="Assemblies" ItemName="VisionProResolvedIdentity" />
+    </GetAssemblyIdentity>
+    <Error Condition="'%(VisionProResolvedIdentity.Version)' != '$(VisionProTargetVersion)'" Text="VisionPro version mismatch: %(VisionProResolvedIdentity.Identity) is %(VisionProResolvedIdentity.Version); expected $(VisionProTargetVersion). Repair the SDK/reference paths; do not redirect to another release." />
+    <Error Condition="'%(VisionProResolvedIdentity.PublicKeyToken)' != 'ef0f902af9dee505'" Text="Unexpected VisionPro assembly signing key: %(VisionProResolvedIdentity.Identity)" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)VisionPro-resolved-references.txt" Lines="@(VisionProResolved->'%(FusionName)|%(FullPath)')" Overwrite="true" />
+  </Target>
+  <Target Name="ValidateVisionProOutput" AfterTargets="Build" DependsOnTargets="ResolveReferences" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <VisionProOutputFiles Include="$(TargetDir)Cognex.VisionPro*.dll" />
+    </ItemGroup>
+    <GetAssemblyIdentity AssemblyFiles="@(VisionProOutputFiles)">
+      <Output TaskParameter="Assemblies" ItemName="VisionProOutputIdentity" />
+    </GetAssemblyIdentity>
+    <Error Condition="'%(VisionProOutputIdentity.Version)' != '$(VisionProTargetVersion)'" Text="Stale/mixed VisionPro DLL in output: %(VisionProOutputIdentity.Identity). Expected $(VisionProTargetVersion). Move the conflicting DLL out of the output directory and rebuild." />
+    <Copy SourceFiles="$(IntermediateOutputPath)VisionPro-resolved-references.txt" DestinationFiles="$(TargetPath).visionpro-references.txt" />
+  </Target>
+</Project>

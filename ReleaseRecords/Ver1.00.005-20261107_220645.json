@@ -1,0 +1,256 @@
+{
+  "version": "Ver1.00.005",
+  "buildDate": "20261107_220645",
+  "tag": "Ver1.00.005-20261107_220645",
+  "baseCommit": "f6c7ab4680aa7b503d08555c179b19473db388c1",
+  "visionPro": "9.6 SR2",
+  "framework": "net472",
+  "architecture": "x64",
+  "artifacts": [
+    {
+      "path": "Aron.PluginContracts.dll",
+      "sha256": "27D52124BB7BC4B0337A1CD8B4278F75306E29947FF74487A818DBE4350FFFBE",
+      "bytes": 7168
+    },
+    {
+      "path": "Aron.PluginContracts.pdb",
+      "sha256": "2125CBC240ACFE66F677834AEAE5C1D47218D5AD6237B962804AC964AF64B401",
+      "bytes": 28160
+    },
+    {
+      "path": "Cognex.VisionPro.Comm.Controls.dll",
+      "sha256": "C8AA72708799C39FA6840DB59BEFF7699A3A7F319A58D1367429A4E5BCB365E0",
+      "bytes": 73112
+    },
+    {
+      "path": "Cognex.VisionPro.Comm.dll",
+      "sha256": "212823223208287555CDC14ED2A779191A4C6279F270659DFE79873923B67C7D",
+      "bytes": 6639000
+    },
+    {
+      "path": "Cognex.VisionPro.Controls.dll",
+      "sha256": "4A00791F46E56A673373E16703E14B9BA7923F326B113AD5262F2286D6ACD654",
+      "bytes": 2390424
+    },
+    {
+      "path": "Cognex.VisionPro.Core.dll",
+      "sha256": "E66CC33DDC006AB238BB9A1AA81B8A7A07B2934D08C58C8B5B2E8E1BABB6C6D8",
+      "bytes": 38416792
+    },
+    {
+      "path": "Cognex.VisionPro.CorePlus.dll",
+      "sha256": "8092F71637BFE7BF69B1B3A769BA2DAAC0B75C7A4FB21E78272DCFFA27548185",
+      "bytes": 36946328
+    },
+    {
+      "path": "Cognex.VisionPro.Database.dll",
+      "sha256": "C9BE1DCCE7214F32068DCF194FCADF1A518B2B609055510D74847EE0B5508A27",
+      "bytes": 29080
+    },
+    {
+      "path": "Cognex.VisionPro.Display.Controls.dll",
+      "sha256": "133AC4C341D2752117DF7A26FDFEBDFC9EF4D719A45FFA6A528084B076FD615E",
+      "bytes": 96664
+    },
+    {
+      "path": "Cognex.VisionPro.dll",
+      "sha256": "9F65DCE4A0FE5D98F693A22A0BBC3FEF9CE90934D04600B219C7549520F5D4FD",
+      "bytes": 304536
+    },
+    {
+      "path": "Cognex.VisionPro.FGGigE.dll",
+      "sha256": "A68936E8CE3E4F924676CB9697DC6C9A75FD57FCF1110AE2361B322B8FD08295",
+      "bytes": 4725656
+    },
+    {
+      "path": "Cognex.VisionPro.ImageFile.dll",
+      "sha256": "2B00499C8D6BEC9A9C46A13412386B5CD2E8EFA36D3CB9E582F350AF2F039F9E",
+      "bytes": 36054936
+    },
+    {
+      "path": "Cognex.VisionPro.ImageProcessing.dll",
+      "sha256": "A4A4DDF23E061B22715213711E8DBC50148678DFC3AA94EAF8689392C3B1BE00",
+      "bytes": 5634456
+    },
+    {
+      "path": "Cognex.VisionPro.Inspection.Controls.dll",
+      "sha256": "43A871AE821F76F64D0F0543A9E327B76ECFD7F3704D708F9859782491F64C34",
+      "bytes": 172440
+    },
+    {
+      "path": "Cognex.VisionPro.Inspection.dll",
+      "sha256": "E11FD7B94F26D76F00F6B0E3B844E9D190CB2932534FF5B3A281DB3D20EA2852",
+      "bytes": 67480
+    },
+    {
+      "path": "Cognex.VisionPro.ToolGroup.Controls.dll",
+      "sha256": "E951DFAF3D9E3E842A9F5A6B4C5F88DD3F3DFB3C84DC06A3ED1942E7FAD97C8C",
+      "bytes": 319896
+    },
+    {
+      "path": "Cognex.VisionPro.ToolGroup.dll",
+      "sha256": "EE9FDB1CF1A2F42B92E3FC6EE4DBB4A661390A96C4A61247611C349437AE5762",
+      "bytes": 82328
+    },
+    {
+      "path": "Cognex.VisionPro3D.Core.dll",
+      "sha256": "176FC7FEB0580F302E04589294F2976BB5E24C20A2BA866C5CD10718D0D93118",
+      "bytes": 44125080
+    },
+    {
+      "path": "Cognex.VisionPro3D.Display.Controls.dll",
+      "sha256": "8D6D9F0BF5FD0B3A577175EB7B9B3676202879AE1D7D896E2971967C027F3605",
+      "bytes": 49560
+    },
+    {
+      "path": "Cognex.VisionPro3D.dll",
+      "sha256": "E8C8F6C1F2C57DFA9087E2470C9A5C32F775273A3D67DCD303DAE071028EB1A1",
+      "bytes": 51365272
+    },
+    {
+      "path": "Cognex.VisionPro3D.Graphic.dll",
+      "sha256": "80054F651E3C2C25C27D8AA9FC96CED33695D6E41E362C9E4AC79FBCBFB43766",
+      "bytes": 31606680
+    },
+    {
+      "path": "CsvHelper.dll",
+      "sha256": "C94A8E880DD74128D6516DF3DAD4DEFA86AB46CA68EAA345A9FB2929A57478FD",
+      "bytes": 225792
+    },
+    {
+      "path": "EntityFramework.dll",
+      "sha256": "CE25578A749C17A559832340004AC1AF2BF3594B79795AE53F8CAB09999E8FF6",
+      "bytes": 4994080
+    },
+    {
+      "path": "EntityFramework.SqlServer.dll",
+      "sha256": "A0DCF975C7E3A1496D8E58CC972210B4CF91193E474D2C868A0869C7643ADE5A",
+      "bytes": 592416
+    },
+    {
+      "path": "HslCommunication.dll",
+      "sha256": "C0D2FAEBEB083685909684F294794C0CA7FCA1A8501105B59A070138DD4C0D50",
+      "bytes": 692736
+    },
+    {
+      "path": "Microsoft.Bcl.HashCode.dll",
+      "sha256": "76B1260CE747A317E9B514433B89A81B038411FCABDDC6F9C7DBABB0742D8B81",
+      "bytes": 23424
+    },
+    {
+      "path": "Newtonsoft.Json.dll",
+      "sha256": "B624949DF8B0E3A6153FDFB730A7C6F4990B6592EE0D922E1788433D276610F3",
+      "bytes": 701992
+    },
+    {
+      "path": "SqlSugar.dll",
+      "sha256": "53A4F15F8529288EB865DF967650E2B35797E361B107A0FC299E03A90A6AA36B",
+      "bytes": 2877952
+    },
+    {
+      "path": "stdole.dll",
+      "sha256": "D6CDF961C6D2712FE1958815E51A30960D79FFF1E97788B7741627DBA972E8F7",
+      "bytes": 16384
+    },
+    {
+      "path": "SunnyUI.Common.dll",
+      "sha256": "27C469447E23EB01FB231DA3A6F427E825B6DFDD92F9E8897240C0ABD9E7BCE5",
+      "bytes": 168448
+    },
+    {
+      "path": "SunnyUI.dll",
+      "sha256": "8AF17CD7F86B71EBE9DCDFBBE1943A187D91831EDE4C74F131FB0D9945C3C9C2",
+      "bytes": 3496960
+    },
+    {
+      "path": "System.Buffers.dll",
+      "sha256": "2D78D770C9CB997199154AE8C018B9F1D1EFBC86729F7264DDE6DBAD2A12CAC3",
+      "bytes": 23816
+    },
+    {
+      "path": "System.Data.SqlClient.dll",
+      "sha256": "50F6A817E5A4AE531CC74CC014B9981538975F7719AB84BB2C20D323E902A131",
+      "bytes": 127752
+    },
+    {
+      "path": "System.Data.SQLite.dll",
+      "sha256": "77DAC4E1AA63161D6AFF363030A801945D6B8D5B823A6B460B2C2BE9EC38D3B7",
+      "bytes": 450232
+    },
+    {
+      "path": "System.Memory.dll",
+      "sha256": "D5E8E4866F9CFA66F7765660F84B210198893E55335487AFE5EBDA342C0E913D",
+      "bytes": 145200
+    },
+    {
+      "path": "System.Numerics.Vectors.dll",
+      "sha256": "20C2FA81B8C70D651099D762954F285FD4F942E63B2D7217C145DAB8D4B2F4C9",
+      "bytes": 110344
+    },
+    {
+      "path": "System.Runtime.CompilerServices.Unsafe.dll",
+      "sha256": "08CBD7278B66F1E68425A82D4B97181A4130D93E3DD91831407ABA7212CCDACF",
+      "bytes": 19256
+    },
+    {
+      "path": "Visual Inspection.exe",
+      "sha256": "F1D9D212F756C87BE487ACC383B4582FD5E1C6123796DB103A3D9E2F908835DF",
+      "bytes": 1159680
+    },
+    {
+      "path": "Visual Inspection.exe.config",
+      "sha256": "7E0B19914230909CBD0D2100119AB16B66812AC8550BF510FBD55CF87E8A59C1",
+      "bytes": 3356
+    },
+    {
+      "path": "Visual Inspection.pdb",
+      "sha256": "E57436431DB916F95F6F6047BF7D518BFA115915128095A61648E32B7B1B54FD",
+      "bytes": 1797632
+    },
+    {
+      "path": "LmiSdk\\GoSdk.dll",
+      "sha256": "10A1231DF99AF46FB50347698BAEE76C010113A73E0157AEA3A915AF5E8AE774",
+      "bytes": 998400
+    },
+    {
+      "path": "LmiSdk\\GoSdkNet.dll",
+      "sha256": "22A7BA504A963DC2709BA9357BECA73881D3A43BD6E3FD199425C70E630F3315",
+      "bytes": 813056
+    },
+    {
+      "path": "LmiSdk\\kApi.dll",
+      "sha256": "DCD57B7394D93B2E9C2DFF30AE0429AE95779A120C105A9F4FB789889D2608AE",
+      "bytes": 590848
+    },
+    {
+      "path": "LmiSdk\\kApiNet.dll",
+      "sha256": "CB9479ED4647AD2DCF534E1CB3AF4C63C164382C6E73C50D50930B72F4E1F028",
+      "bytes": 335872
+    },
+    {
+      "path": "LmiSdk\\ucrtbase.dll",
+      "sha256": "D93CE42CD625510B2355DE086BCD19E2C11307CCADE7BAD62B09C7F340A866BA",
+      "bytes": 1133624
+    },
+    {
+      "path": "LmiSdk\\vcruntime140.dll",
+      "sha256": "02C6AA0E6E624411A9F19B0360A7865AB15908E26024510E5C38A9C08362C35A",
+      "bytes": 119888
+    },
+    {
+      "path": "Plugins\\PreWeld\\Aron.Plugins.PreWeld.dll",
+      "sha256": "F850BEC4FABAAB9C3F6DB01481D0C96BBA02B286CF4AEC60AAD2444E3E508335",
+      "bytes": 99328
+    },
+    {
+      "path": "Plugins\\PreWeld\\Aron.Plugins.PreWeld.pdb",
+      "sha256": "8A73288A0A2C9B37658892AF4C6EAD5A23373B99A9F37AAF10344E06F23EF0A0",
+      "bytes": 220672
+    },
+    {
+      "path": "x64\\SQLite.Interop.dll",
+      "sha256": "1111916DC329A13BD627B2CD90C9B2263DE9923FD0BB6059C69C52332F360C37",
+      "bytes": 2005688
+    }
+  ]
+}

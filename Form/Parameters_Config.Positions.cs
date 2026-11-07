@@ -111,11 +111,11 @@ namespace Aron_V2
         internal LimitCloneTargetForm(Func<AppConfig> read, string job, string camera, string position)
         {
             _read = read; _job = job; _camera = camera; _position = position;
-            Text = UiLanguage.Current == "zh-CN" ? "克隆 Limit 参数到" : "Clone Limit parameters to";
+            Text = "Clone Limit parameters to";
             StartPosition = FormStartPosition.CenterParent; FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false; AutoSize = true; AutoSizeMode = AutoSizeMode.GrowAndShrink;
             var layout = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, Padding = new Padding(22) };
-            var source = new Label { Text = (UiLanguage.Current == "zh-CN" ? "来源：" : "From: ") + job + " / " + camera + " / " + position, AutoSize = true, Margin = new Padding(4, 4, 4, 18) };
+            var source = new Label { Text = "From: " + job + " / " + camera + " / " + position, AutoSize = true, Margin = new Padding(4, 4, 4, 18) };
             layout.Controls.Add(source, 0, 0); layout.SetColumnSpan(source, 2);
             var selectors = new[] { _jobs, _cameras, _positions };
             for (int i = 0; i < selectors.Length; i++)
@@ -132,7 +132,7 @@ namespace Aron_V2
             var cancel = new Button { Text = "Cancel", AutoSize = true, DialogResult = DialogResult.Cancel };
             layout.Controls.Add(cancel, 0, 4); layout.Controls.Add(_confirm, 1, 4);
             Controls.Add(layout); AcceptButton = _confirm; CancelButton = cancel;
-            DesktopTheme.ApplySettings(this); Reload();
+            DesktopTheme.ApplySettings(this); UiLanguage.ApplyTo(this); Reload();
         }
         private void Fill(ComboBox combo, IEnumerable<string> names)
         {

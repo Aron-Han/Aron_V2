@@ -24,6 +24,7 @@ namespace Aron_V2
 			InitializeCompactLayout();
 			btnAddJob.Visible = btnDeleteJob.Visible = false;
 			DesktopTheme.ApplySettings(this);
+			UiLanguage.ApplyTo(this);
 			comboJob.DropDown += (s, e) => RefreshLimitCatalog();
 			comboCam.DropDown += (s, e) => RefreshLimitCatalog();
 			_comboPos.DropDown += (s, e) => RefreshLimitCatalog();
@@ -84,6 +85,11 @@ namespace Aron_V2
 			dataGridView1.BackgroundColor = SystemColors.Window;
 			dataGridView1.Dock = DockStyle.Fill;
 			dataGridView1.DataSource = _rows;
+			dataGridView1.CellFormatting += (s, e) => {
+				if (e.RowIndex >= 0 && dataGridView1.Columns[e.ColumnIndex].Name == "Description" &&
+					(Convert.ToString(e.Value) == "New parameter" || Convert.ToString(e.Value) == "新参数"))
+				{ e.Value = UiLanguage.Text("New parameter"); e.FormattingApplied = true; }
+			};
 			comboJob.DropDownStyle = comboCam.DropDownStyle = ComboBoxStyle.DropDownList;
 			float scale = DeviceDpi / 96F;
 			foreach (Button button in new[] { btnLoad, btnSave, btnAddJob, btnDeleteJob, btnAddrow, btnDeleterow })
@@ -165,7 +171,7 @@ namespace Aron_V2
 			{
 			comboCam.Items.Clear();
 			string job = comboJob.SelectedItem == null ? null : comboJob.SelectedItem.ToString();
-			if (string.IsNullOrEmpty(job) || _config == null || _config.Models == null) return;
+			if (string.IsNullOrEmpty(job) || _config == null || _config.Models == null) { _comboPos.Items.Clear(); return; }
 
 			var model = _config.Models.FirstOrDefault(m => m.Name == job);
 			if (model != null && model.Cameras != null)
@@ -402,72 +408,45 @@ namespace Aron_V2
 			return false;
 		}
 
-		private void btnAddRow_Click(object sender, EventArgs e)
-		{
-			if (_config == null)
-			{
-				MessageBox.Show("请先加载配置。");
-				return;
-			}
-
-			var jobName = comboJob.SelectedItem == null ? null : comboJob.SelectedItem.ToString();
-			var camName = comboCam.SelectedItem == null ? null : comboCam.SelectedItem.ToString();
-
-			if (string.IsNullOrEmpty(jobName))
-			{
-				MessageBox.Show("请先选择 Job。");
-				return;
-			}
-			if (string.IsNullOrEmpty(camName))
-			{
-				MessageBox.Show("请先选择 Cam。");
-				return;
-			}
-
-			// 找到该 Job / Cam 的第一个 Position（若没有，就默认用 "Pos1"；保存时会自动创建）
-			string posName = _comboPos.SelectedItem as string;
-			if (string.IsNullOrEmpty(posName)) { MessageBox.Show(this, TLimit("Select a Position first.", "请先选择 Pos。")); return; }
-
-			// 生成一个不重名的默认参数名
-			string defaultParamName = CreateDefaultParameterNameForCurrentScope(jobName, camName, posName);
-
-			// 也可以弹窗让用户输入（可选）：
-			string input = Prompt.Show("参数名：", "新增参数", defaultParamName);
-			if (!string.IsNullOrWhiteSpace(input)) defaultParamName = input.Trim();
-
-			// 拿到当前绑定源，没有就创建一个
-			var list = dataGridView1.DataSource as BindingList<ParameterRow>;
-			if (list == null)
-			{
-				var rows = BuildParameterList(_config, jobName, camName);
-				list = new BindingList<ParameterRow>(rows);
-				dataGridView1.AutoGenerateColumns = false;
-				dataGridView1.DataSource = list;
-			}
-
-			// 新增一行（默认值可按需调整）
-			var newRow = new ParameterRow
-			{
-				Model = jobName,
-				Camera = camName,
-				Position = posName,
-				Parameter = defaultParamName,    // 如 "Param3"
-				Description = "新参数",           // 默认描述
-				Value = "0"                      // 默认值
-			};
-
-			list.Add(newRow);
-
-			// 选中新行，便于用户立即编辑
-			int idx = list.Count - 1;
-			if (idx >= 0)
-			{
-				dataGridView1.ClearSelection();
-				dataGridView1.Rows[idx].Selected = true;
-				dataGridView1.CurrentCell = dataGridView1.Rows[idx].Cells["Value"]; // 光标放到 Value 列
-				dataGridView1.BeginEdit(true);
-			}
-		}
+        private async void btnAddRow_Click(object sender, EventArgs e)
+        {
+            string job = comboJob.SelectedItem as string, camera = comboCam.SelectedItem as string, position = _comboPos.SelectedItem as string;
+            if (UseWaitCursor || _config == null) return;
+            if (string.IsNullOrEmpty(job) || string.IsNullOrEmpty(camera) || string.IsNullOrEmpty(position))
+            { MessageBox.Show(this, TLimit("Select Job, Camera and Position first.", "请先选择 Job、Cam 和 Pos。")); return; }
+            var existing = _rows.Select(row => row.Parameter).ToArray();
+            List<LimitInputChoice> choices;
+            btnAddrow.Enabled = comboJob.Enabled = comboCam.Enabled = _comboPos.Enabled = false;
+            UseWaitCursor = true;
+            try
+            {
+                string root = Global.Vpp_Root;
+                choices = await Task.Run(() => ReadLimitInputChoices(root, job, camera, position, existing));
+            }
+            catch (Exception ex)
+            {
+                if (!IsDisposed) MessageBox.Show(this, TLimit("Cannot read VPP inputs:\r\n", "读取 VPP 输入引脚失败：\r\n") + ex.GetBaseException().Message, Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            finally
+            {
+                if (!IsDisposed) { btnAddrow.Enabled = comboJob.Enabled = comboCam.Enabled = _comboPos.Enabled = true; UseWaitCursor = false; }
+            }
+            if (IsDisposed) return;
+            if (choices.Count == 0)
+            { MessageBox.Show(this, TLimit("No unused non-default inputs were found in this Inspection.vpp. Add inputs in Algorithm and save the VPP first.", "当前 Inspection.vpp 中没有可添加的非默认输入引脚。请先在算法中新增输入并保存 VPP。"), Text, MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            using (var dialog = new LimitInputChoiceForm(choices, job + " / " + camera + " / " + position))
+            {
+                if (dialog.ShowDialog(this) != DialogResult.OK || dialog.SelectedInput == null) return;
+                var selected = dialog.SelectedInput;
+                if (_rows.Any(row => string.Equals(row.Parameter, selected.Name, StringComparison.OrdinalIgnoreCase))) return;
+                _rows.Add(new ParameterRow { Model = job, Camera = camera, Position = position,
+                    Parameter = selected.Name, Description = TLimit("New parameter", "新参数"), Value = selected.DefaultValue });
+                int index = _rows.Count - 1;
+                dataGridView1.ClearSelection(); dataGridView1.CurrentCell = dataGridView1.Rows[index].Cells["Value"];
+                dataGridView1.BeginEdit(true);
+            }
+        }
 
 		/// <summary>
 		/// 找到指定 Job/Cam 的第一个 Position 名称；若没有返回 null

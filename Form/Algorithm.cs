@@ -20,9 +20,12 @@ namespace Aron_V2
         private CogToolBlock _draft;
         private string[] _originalInputNames;
 
+		public Algorithm() : this(null) { }
+
 		public Algorithm(AppConfig config)
 		{
 			InitializeComponent();
+			if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime) return;
             tableLayoutPanel1.Controls.Add(_editorHost, 0, 1);
             _editorHost.Controls.Add(new Label { Text = "Select Job / Camera / Position to load Inspection.vpp.", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter });
 			DesktopTheme.RemoveEditorChannelFromToolbar(tableLayoutPanel2, label4, Cbo_Channel);
@@ -42,6 +45,7 @@ namespace Aron_V2
 
 		private void Algorithm_Load(object sender, EventArgs e)
 		{
+			if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime || DesignMode) return;
 			_loading = true;
 			try
 			{
@@ -111,6 +115,11 @@ namespace Aron_V2
 					return;
 				}
 
+                if (channel < 0 || channel >= Global.Model_JobID.Length ||
+                    !string.Equals(Global.Model_JobID[channel], jobName, StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidOperationException(UiLanguage.Current == "zh-CN"
+                        ? "当前通道的 Job 已改变，请重新加载目标 Job 后再保存。"
+                        : "The channel Job has changed. Load the selected Job again before saving.");
                 var draft = cogToolBlockEditV21.Subject;
                 var required = RequiredOutputsForSave(jobName, camName, posName, draft);
                 var errors = InspectionVppContract.Validate(draft, _originalInputNames, required);
@@ -352,6 +361,25 @@ namespace Aron_V2
 				Cbo_Channel.SelectedIndex = 0;
 		}
 
+        private bool EnsureSelectedRuntimeJob(string job, int channel)
+        {
+            if (channel >= 0 && channel < Global.Model_JobID.Length &&
+                string.Equals(Global.Model_JobID[channel], job, StringComparison.OrdinalIgnoreCase)) return true;
+            // A cancelled selection must not leave the previous draft under new selectors.
+            if (cogToolBlockEditV21 != null) cogToolBlockEditV21.Subject = null;
+            _draft?.Dispose(); _draft = null;
+            string current = channel >= 0 && channel < Global.Model_JobID.Length ? Global.Model_JobID[channel] : null;
+            string message = UiLanguage.Current == "zh-CN"
+                ? $"通道 CH{channel} 当前加载的是 {current ?? "（无）"}。是否切换并加载 {job}？\r\n该通道原有 VPP 缓存将释放。"
+                : $"Channel CH{channel} currently has {current ?? "(none)"} loaded. Switch and load {job}?\r\nThe channel's previous VPP cache will be released.";
+            if (MessageBox.Show(this, message, UiLanguage.Text("Confirm"), MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes) return false;
+            var main = Owner as FormMain;
+            if (main == null) throw new InvalidOperationException("Open the algorithm editor from the main window to switch Jobs.");
+            main.LoadAlgorithmJob(channel, job);
+            return channel >= 0 && channel < Global.Model_JobID.Length &&
+                string.Equals(Global.Model_JobID[channel], job, StringComparison.OrdinalIgnoreCase);
+        }
 		private void RefreshTool()
         {
             try { RefreshAlgorithmTool(); }
@@ -385,6 +413,7 @@ namespace Aron_V2
 				return;
 			}
 
+			if (!EnsureSelectedRuntimeJob(jobName, channel)) return;
 			CogToolBlock vpp;
 			bool ok = Load_Job.VppCache.TryGetTb(jobName, channel, camName, posName, out vpp);
 
@@ -438,6 +467,7 @@ namespace Aron_V2
 					return;
 				}
 
+				if (!EnsureSelectedRuntimeJob(jobName, channel)) return;
 				if (string.IsNullOrWhiteSpace(Global.Vpp_Root))
 				{
 					MessageBox.Show("Global.Vpp_Root is empty. The VPP path cannot be determined.", "Load Failed",

@@ -361,3 +361,11 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+
+# Field data must never be published as source releases.
+*.[vV][pP][pP]
+/Project/
+/Config/
+/Recipes/
+*.dmp
+*.bak

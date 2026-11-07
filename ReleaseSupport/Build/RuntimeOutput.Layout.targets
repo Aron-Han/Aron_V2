@@ -1,0 +1,15 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- SQLite's package normally copies both architectures. This application
+       targets x64; retain its x64 native loader and omit only x86. -->
+  <Target Name="SelectRuntimeSqliteArchitecture" BeforeTargets="CopySQLiteInteropFiles" Condition="'$(PlatformTarget)' == 'x64'">
+    <ItemGroup>
+      <SQLiteInteropFiles Remove="@(SQLiteInteropFiles)" Condition="'%(SQLiteInteropFiles.RecursiveDir)' == 'x86\'" />
+    </ItemGroup>
+  </Target>
+  <Target Name="RemoveRuntimeApiDocumentation" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <ItemGroup>
+      <RuntimeApiDocumentation Include="$(TargetDir)*.xml" />
+    </ItemGroup>
+    <Delete Files="@(RuntimeApiDocumentation)" Condition="Exists('$(TargetDir)%(RuntimeApiDocumentation.Filename).dll')" />
+  </Target>
+</Project>

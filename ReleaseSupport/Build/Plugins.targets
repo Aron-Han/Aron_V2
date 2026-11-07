@@ -1,0 +1,11 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Build/deploy the optional module, but never create or enable project configuration. -->
+  <Target Name="BuildOptionalPlugins" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)..\Plugins\PreWeld\Aron.Plugins.PreWeld.csproj" Targets="Build" Properties="Configuration=$(Configuration);Platform=AnyCPU" RemoveProperties="OutputPath;OutDir;BaseIntermediateOutputPath;IntermediateOutputPath" BuildInParallel="false" />
+    <ItemGroup>
+      <PreWeldFiles Include="$(MSBuildThisFileDirectory)..\Plugins\PreWeld\bin\$(Configuration)\Aron.Plugins.PreWeld.dll;$(MSBuildThisFileDirectory)..\Plugins\PreWeld\bin\$(Configuration)\Aron.Plugins.PreWeld.pdb;$(MSBuildThisFileDirectory)..\Plugins\PreWeld\plugin.xml" />
+    </ItemGroup>
+    <MakeDir Directories="$(TargetDir)Plugins\PreWeld" />
+    <Copy SourceFiles="@(PreWeldFiles)" DestinationFolder="$(TargetDir)Plugins\PreWeld" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

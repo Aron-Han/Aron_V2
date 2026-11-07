@@ -7,6 +7,13 @@ namespace Aron_V2
     public partial class FormMain
     {
         private System.Collections.Generic.HashSet<int> _catalogCameraIds;
+        internal void LoadAlgorithmJob(int channel, string job)
+        {
+            string reason = JobControlBlockReason();
+            if (reason != null) throw new InvalidOperationException(reason);
+            using (AcquireAlgorithmSaveGates(new[] { channel }))
+                Load_Job.LoadVPP_ForChannel_AllPos(channel, job);
+        }
         internal IDisposable AcquireAlgorithmSaveGates(int[] channels)
         {
             if (_cameraRecovering != 0 || _cameraRecoveryStopping || _switchingOnline)
