@@ -35,6 +35,9 @@ namespace Aron_V2
         // position's algorithm editor as its latest 3D image.
         internal Func<string> ReadPosition;
         internal Func<bool> CanUseDevice;
+        internal Func<string> DeviceBlockReason;
+        internal Func<string> DeviceState;
+        internal Func<IDisposable> AcquireDeviceLease;
         internal bool UseSdk { get { return _sdk.Checked; } }
         internal string JobName { get; private set; }
         internal string CameraName { get; private set; }
@@ -147,15 +150,25 @@ namespace Aron_V2
         private async Task RunDeviceOperation(bool capture)
         {
             if (_busy) return;
-            if (CanUseDevice != null && !CanUseDevice())
-            { MessageBox.Show(this, "Switch Offline and wait for current inspections to finish before SDK testing.", "SDK camera", MessageBoxButtons.OK, MessageBoxIcon.Information); return; }
+            string blocked=DeviceBlockReason?.Invoke();
+            if (blocked==null && DeviceBlockReason==null && CanUseDevice!=null && !CanUseDevice())
+                blocked=UiLanguage.Text("Switch Offline and wait for current inspections to finish before SDK testing.");
+            if (blocked!=null)
+            {
+                ShowStatus(blocked);
+                DiagnosticLogStore.Record("WARN","SDK test blocked",JobName+"/"+CameraName+"; "+blocked+"; "+DeviceState?.Invoke());
+                OperationAudit.Record("SDK camera","Test blocked",blocked);
+                MessageBox.Show(this,blocked,UiLanguage.Text("SDK camera"),MessageBoxButtons.OK,MessageBoxIcon.Information); return;
+            }
             var config = Draft(); string error = CameraAcquisition.Validate(config);
             if (error != null) { ShowStatus(error); return; }
             _busy = true; Enabled = false;
             BusyChanged?.Invoke(this, EventArgs.Empty);
             var owner = FindForm(); if (owner != null) owner.FormClosing += PreventClosing;
+            IDisposable lease=null;
             try
             {
+                lease=AcquireDeviceLease?.Invoke();
                 ShowStatus(capture ? "Capturing " + config.IpAddress + "…" : "Checking " + config.IpAddress + "…");
                 if (capture)
                 {
@@ -187,8 +200,8 @@ namespace Aron_V2
                 }
                 else ShowStatus(await Task.Run(() => CameraAcquisition.Diagnose(config)));
             }
-            catch (Exception ex) { ShowStatus("FAIL: " + ex.GetBaseException().Message); }
-            finally { if (owner != null) owner.FormClosing -= PreventClosing; _busy = false; Enabled = true; BusyChanged?.Invoke(this, EventArgs.Empty); }
+            catch (Exception ex) { ShowStatus("FAIL: " + ex.GetBaseException().Message); DiagnosticLogStore.Exception("SDK test "+JobName+"/"+CameraName+"; "+DeviceState?.Invoke(),ex); }
+            finally { lease?.Dispose(); if (owner != null) owner.FormClosing -= PreventClosing; _busy = false; Enabled = true; BusyChanged?.Invoke(this, EventArgs.Empty); }
         }
 
         private void PreventClosing(object sender, FormClosingEventArgs e) { if (e.CloseReason == CloseReason.UserClosing) e.Cancel = true; }

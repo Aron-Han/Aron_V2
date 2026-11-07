@@ -84,6 +84,9 @@ namespace Aron_V2
 
 			btnApply.Click += (s, e) =>
 			{
+                try
+                {
+                var backup=ReadBackupSettings();
 				Current.EnableSave = chkEnable.Checked;
 				Current.Root = txtRoot.Text.Trim();
 
@@ -109,6 +112,8 @@ namespace Aron_V2
 
 				if (_languageSelector != null) Current.Language = _languageSelector.SelectedIndex == 1 ? "zh-CN" : "en";
 				SaveSettings();
+                if(backup!=null) ProjectBackupSettings.Save(backup);
+                OperationAudit.Record("General", "Settings saved", "General settings / Project backup settings");
 				UiLanguage.SetLanguage(Current.Language);
 
 				if (SettingsSaved != null)
@@ -117,6 +122,12 @@ namespace Aron_V2
 				}
 
 				MessageBox.Show(UiLanguage.Text("Save Successed！"));
+                }
+                catch(Exception ex)
+                {
+                    OperationAudit.Record("General", "Save failed", ex.GetType().Name);
+                    MessageBox.Show(this,ex.Message,UiLanguage.Text("Error"),MessageBoxButtons.OK,MessageBoxIcon.Warning);
+                }
 			};
 		}
 

@@ -143,12 +143,14 @@ namespace Aron_V2
 					" Ch:" + channel +
 					" Path:" + savePath,
 					Color.Green);
+                OperationAudit.Record("Algorithm", "VPP save succeeded", $"{jobName} / {camName} / {posName} / CH{channel}");
 				MessageBox.Show(this, UiLanguage.Current == "zh-CN" ? "保存成功。" : "Save OK.",
 					UiLanguage.Current == "zh-CN" ? "保存" : "Save", MessageBoxButtons.OK, MessageBoxIcon.Information);
 			}
 			catch (Exception ex)
 			{
 				LogChangeEventArgs.Set("Log", "Save Inspection VPP failed: " + ex.Message, Color.Red);
+                OperationAudit.Record("Algorithm", "VPP save failed", ex.GetType().Name);
 				MessageBox.Show("Save Inspection VPP failed:\r\n" + ex.Message, "Error",
 					MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}

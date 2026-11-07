@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace Aron_V2
@@ -77,6 +80,7 @@ namespace Aron_V2
             Load += (s, e) => _languageSelector.SelectedIndex = UiLanguage.Normalize(Current.Language) == "zh-CN" ? 1 : 0;
             field(new Label { Text = "Log display:" }, line(new Control[] { Show_upload_info, checkBox2, chkCleanupLog }));
             field(label7, Lincese); field(label8, Program_Name);
+            AddBackupSettings(section, field, line);
             layout.RowCount = row;
             layout.Layout += (s, e) => AlignCaptionCenters(layout);
             // Save is hosted by the settings center's fixed footer, not in
@@ -93,6 +97,182 @@ namespace Aron_V2
             VisibleChanged += (s, e) => { if (Visible) QueueInlineAlignment(); };
             cboFormat.SizeChanged += (s, e) => QueueInlineAlignment();
             ResumeLayout(true);
+            PrepareFeatureCards(layout);
+        }
+
+        internal event EventHandler DraftChanged;
+        private void PrepareFeatureCards(Control originalLayout)
+        {
+            // Original controls remain the sole draft backing the existing Save handler.
+            originalLayout.Visible=false;
+            var scroll=new Panel { Name="GeneralFeatureScroll", Dock=DockStyle.Fill, AutoScroll=true,
+                Padding=new Padding(10,8,SystemInformation.VerticalScrollBarWidth+10,8), BackColor=DesktopTheme.Surface };
+            var cards=new TableLayoutPanel { Name="GeneralFeatureCards", Dock=DockStyle.Top, AutoSize=true,
+                AutoSizeMode=AutoSizeMode.GrowAndShrink, ColumnCount=1, RowCount=0, Margin=Padding.Empty };
+            cards.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+            scroll.Controls.Add(cards); Controls.Add(scroll); scroll.BringToFront();
+            AddFeatureCard(cards,"Image storage","Image format, storage directory and retention policy.",chkEnable,"ImageStorage",()=>OpenFeatureSettings("ImageStorage"));
+            AddFeatureCard(cards,"FTP upload","Server, account and upload directory.",checkBox1,"FtpUpload",()=>OpenFeatureSettings("FtpUpload"));
+            AddFeatureCard(cards,"Display and application","Language, log visibility and application information.",
+                new CheckBox { Name="DisplayAlwaysEnabled",Checked=true,Enabled=false },"DisplayApplication",()=>OpenFeatureSettings("DisplayApplication"));
+            AddFeatureCard(cards,"Project backup","Project backup interval, retention and destination.",_backupEnabled,"ProjectBackup",()=>OpenFeatureSettings("ProjectBackup"));
+            UiLanguage.ApplyTo(this);
+        }
+        private void AddFeatureCard(TableLayoutPanel cards,string title,string description,CheckBox enabled,string key,Action configure)
+        {
+            float scale=DesktopTheme.DisplayScale;
+            var card=new GeneralFeatureCard { Name="FeatureCard"+key, Dock=DockStyle.Fill,
+                Margin=new Padding(0,0,0,(int)(12*scale)), Height=(int)(88*scale), Padding=new Padding((int)(16*scale)) };
+            var row=new TableLayoutPanel { Dock=DockStyle.Fill, ColumnCount=3, RowCount=1, Margin=Padding.Empty, Padding=Padding.Empty };
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,36*scale)); row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); row.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,52*scale));
+            row.RowStyles.Add(new RowStyle(SizeType.Percent,100));
+            enabled.AutoSize=false; enabled.Text=""; enabled.Size=new Size((int)(22*scale),(int)(22*scale));
+            enabled.Margin=Padding.Empty; enabled.Anchor=AnchorStyles.Left;
+            enabled.AccessibleName=title; enabled.CheckedChanged+=(s,e)=> { if(enabled.Focused) DraftChanged?.Invoke(this,EventArgs.Empty); };
+            var text=new TableLayoutPanel { Dock=DockStyle.Fill, ColumnCount=1, RowCount=2, Margin=Padding.Empty };
+            text.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); text.RowStyles.Add(new RowStyle(SizeType.Percent,48)); text.RowStyles.Add(new RowStyle(SizeType.Percent,52));
+            var heading=new FlowLayoutPanel { Dock=DockStyle.Fill, WrapContents=false, Margin=Padding.Empty };
+            var font=new Font(Font.FontFamily,10F,FontStyle.Bold);
+            var name=new Label { Text=title,AutoSize=true,Font=font,ForeColor=DesktopTheme.Ink,Margin=new Padding(0,0,(int)(12*scale),0) };
+            name.Disposed+=(s,e)=>font.Dispose(); heading.Controls.Add(name);
+            if(!enabled.Enabled) heading.Controls.Add(new Label { Text="Always enabled",AutoSize=true,BackColor=Color.FromArgb(237,241,246),ForeColor=DesktopTheme.Muted,Padding=new Padding(5,1,5,1),Margin=Padding.Empty });
+            text.Controls.Add(heading,0,0);
+            text.Controls.Add(new Label { Text=description,Dock=DockStyle.Fill,ForeColor=DesktopTheme.Muted,TextAlign=ContentAlignment.MiddleLeft,AutoEllipsis=true,Margin=Padding.Empty },0,1);
+            var gear=new Button { Name="Configure"+key,Text="",AccessibleName=title,Anchor=AnchorStyles.Right,
+                AutoSize=false,Size=new Size((int)(38*scale),(int)(36*scale)),Margin=Padding.Empty,MinimumSize=Size.Empty };
+            DesktopTheme.StyleButton(gear); gear.BackColor=Color.FromArgb(233,243,254); gear.FlatAppearance.BorderSize=0;
+            gear.Image=DesktopTheme.CreateIcon(DesktopIcon.Settings,(int)(21*scale),DesktopTheme.Accent);
+            gear.ImageAlign=ContentAlignment.MiddleCenter; gear.Disposed+=(s,e)=>gear.Image?.Dispose(); gear.Click+=(s,e)=>configure();
+            row.Controls.Add(enabled,0,0); row.Controls.Add(text,1,0); row.Controls.Add(gear,2,0); card.Controls.Add(row);
+            int index=cards.RowCount++; cards.RowStyles.Add(new RowStyle(SizeType.Absolute,100*scale)); cards.Controls.Add(card,0,index);
+            Action appearance=()=> {
+                if(card.IsDisposed) return;
+                name.Font=font;
+                gear.AutoSize=false; gear.MinimumSize=Size.Empty; gear.MaximumSize=Size.Empty; gear.Padding=Padding.Empty; gear.Margin=Padding.Empty;
+                gear.Size=new Size((int)(38*scale),(int)(36*scale));
+                gear.BackColor=Color.FromArgb(233,243,254); gear.FlatAppearance.BorderSize=0;
+            };
+            Shown+=(s,e)=>appearance();
+            appearance();
+        }
+        private void OpenFeatureSettings(string key)
+        {
+            using(var dialog=CreateFeatureDialog(key))
+            {
+                if(dialog.ShowDialog(this)!=DialogResult.OK) return;
+                dialog.CommitDraft();
+                DraftChanged?.Invoke(this,EventArgs.Empty);
+                OperationAudit.Record("General","Parameters staged",key);
+            }
+        }
+        private GeneralFeatureDialog CreateFeatureDialog(string key)
+        {
+            string title=key=="ImageStorage"?"Image storage settings":key=="FtpUpload"?"FTP upload settings":key=="DisplayApplication"?"Display and application settings":"Project backup settings";
+            var dialog=new GeneralFeatureDialog(title);
+            if(key=="ImageStorage")
+            {
+                dialog.AddField("Save type:",cboFormat); dialog.AddField("Delete cycle (min):",numRetention);
+                dialog.AddField("Image directory:",txtRoot,true);
+            }
+            else if(key=="FtpUpload")
+            {
+                dialog.AddField("IP Address:",textBox1); dialog.AddField("User:",textBox2);
+                dialog.AddField("Password:",textBox3); dialog.AddField("FTP Root:",textBox4);
+            }
+            else if(key=="DisplayApplication")
+            {
+                dialog.AddField("Language:",_languageSelector);
+                dialog.AddField("Show Upload image info",Show_upload_info);
+                dialog.AddField("Show Data Received from PLC",checkBox2);
+                dialog.AddField("Show image cleanup log",chkCleanupLog);
+                dialog.AddField("Lincese:",Lincese); dialog.AddField("Program Name:",Program_Name);
+            }
+            else if(key=="ProjectBackup")
+            {
+                dialog.AddField("Backup interval (days):",_backupInterval); dialog.AddField("Backup retention (days):",_backupRetention);
+                dialog.AddField("Backup directory:",_backupDirectory,true);
+                dialog.ValidateDraft=()=>ProjectBackupSettings.Validate(new ProjectBackupSettings {
+                    Enabled=_backupEnabled.Checked,IntervalDays=(int)((NumericUpDown)dialog.CloneFor(_backupInterval)).Value,
+                    RetentionDays=(int)((NumericUpDown)dialog.CloneFor(_backupRetention)).Value,
+                    Directory=dialog.CloneFor(_backupDirectory).Text.Trim() },ProjectBackupSettings.ProjectDirectory);
+            }
+            else { dialog.Dispose(); throw new ArgumentException("Unknown feature: "+key); }
+            dialog.FinishLayout(); return dialog;
+        }
+        private sealed class GeneralFeatureCard : Panel
+        {
+            internal GeneralFeatureCard() { DoubleBuffered=true; BackColor=DesktopTheme.Surface; }
+            protected override void OnPaint(PaintEventArgs e) { base.OnPaint(e); DesktopTheme.DrawInspectionSurface(e.Graphics,ClientSize,DesktopTheme.Surface,DesktopTheme.Border); }
+        }
+        private sealed class GeneralFeatureDialog : Form
+        {
+            private readonly List<Tuple<Control,Control>> _bindings=new List<Tuple<Control,Control>>();
+            private readonly TableLayoutPanel _fields=new TableLayoutPanel { Dock=DockStyle.Top,AutoSize=true,ColumnCount=2,Padding=new Padding(18),Margin=Padding.Empty };
+            internal Action ValidateDraft;
+            internal GeneralFeatureDialog(string title)
+            {
+                Text=title; Name="GeneralFeatureDialog"; AutoScaleMode=AutoScaleMode.Dpi;
+                StartPosition=FormStartPosition.CenterParent; FormBorderStyle=FormBorderStyle.FixedDialog;
+                MaximizeBox=false; MinimizeBox=false; ShowInTaskbar=false; Width=(int)(630*DesktopTheme.DisplayScale);
+                _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,205*DesktopTheme.DisplayScale));
+                _fields.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100));
+                Controls.Add(_fields);
+            }
+            internal Control CloneFor(Control original) { return _bindings.Single(p=>ReferenceEquals(p.Item1,original)).Item2; }
+            internal void AddField(string label,Control original,bool browse=false)
+            {
+                Control copy;
+                var number=original as NumericUpDown; var combo=original as ComboBox; var check=original as CheckBox;
+                if(number!=null) copy=new NumericUpDown { Minimum=number.Minimum,Maximum=number.Maximum,DecimalPlaces=number.DecimalPlaces,Increment=number.Increment,Value=number.Value,Width=140 };
+                else if(combo!=null)
+                {
+                    var list=new ComboBox { DropDownStyle=combo.DropDownStyle };
+                    list.Items.AddRange(combo.Items.Cast<object>().ToArray()); list.SelectedIndex=combo.SelectedIndex; copy=list;
+                }
+                else if(check!=null) copy=new CheckBox { Text="",Checked=check.Checked,AutoSize=true };
+                else copy=new TextBox { Text=original.Text,UseSystemPasswordChar=(original as TextBox)?.UseSystemPasswordChar??false };
+                copy.Name="Draft"+original.Name; copy.Anchor=AnchorStyles.Left|AnchorStyles.Right; copy.Margin=new Padding(0,8,0,8);
+                _bindings.Add(Tuple.Create(original,copy));
+                int row=_fields.RowCount++; _fields.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+                _fields.Controls.Add(new Label { Text=label,AutoSize=true,Anchor=AnchorStyles.Left,Margin=new Padding(0,8,12,8) },0,row);
+                if(browse)
+                {
+                    var line=new TableLayoutPanel { ColumnCount=2,RowCount=1,Dock=DockStyle.Fill,AutoSize=true,Margin=Padding.Empty };
+                    line.ColumnStyles.Add(new ColumnStyle(SizeType.Percent,100)); line.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,46*DesktopTheme.DisplayScale));
+                    var button=new Button { Text="…",Name="BrowseDraftDirectory",Anchor=AnchorStyles.Right,Size=new Size(36,copy.Height),Margin=new Padding(8,0,0,0) };
+                    button.Click+=(s,e)=> { using(var picker=new FolderBrowserDialog { SelectedPath=copy.Text }) if(picker.ShowDialog(this)==DialogResult.OK) copy.Text=picker.SelectedPath; };
+                    line.Controls.Add(copy,0,0); line.Controls.Add(button,1,0); _fields.Controls.Add(line,1,row);
+                    Shown+=(s,e)=> { button.AutoSize=false; button.MinimumSize=Size.Empty; button.Padding=Padding.Empty; button.Size=new Size((int)(36*DesktopTheme.DisplayScale),copy.Height); };
+                }
+                else _fields.Controls.Add(copy,1,row);
+            }
+            internal void FinishLayout()
+            {
+                float scale=DesktopTheme.DisplayScale;
+                var actions=new FlowLayoutPanel { Dock=DockStyle.Bottom,FlowDirection=FlowDirection.RightToLeft,Height=(int)(62*scale),Padding=new Padding(12),WrapContents=false };
+                var ok=new Button { Text="OK",Name="ConfirmFeatureDraft" };
+                var cancel=new Button { Text="Cancel",Name="CancelFeatureDraft",DialogResult=DialogResult.Cancel };
+                ok.Click+=(s,e)=> { try {
+                    foreach(var number in _bindings.Select(p=>p.Item2).OfType<NumericUpDown>())
+                        if(number.DecimalPlaces==0 && number.Value!=decimal.Truncate(number.Value)) throw new ArgumentException(UiLanguage.Current=="zh-CN"?"天数及计数必须为整数。":"Days and counts must be whole numbers.");
+                    ValidateDraft?.Invoke(); DialogResult=DialogResult.OK; Close();
+                } catch(Exception ex) { MessageBox.Show(this,ex.Message,UiLanguage.Text("Error"),MessageBoxButtons.OK,MessageBoxIcon.Warning); } };
+                actions.Controls.Add(ok); actions.Controls.Add(cancel); Controls.Add(actions);
+                AcceptButton=ok; CancelButton=cancel;
+                DesktopTheme.ApplySettings(this); DesktopTheme.StyleButton(ok,true); UiLanguage.ApplyTo(this);
+                _fields.PerformLayout(); ClientSize=new Size((int)(630*scale),_fields.GetPreferredSize(new Size((int)(630*scale),0)).Height+actions.Height);
+                foreach(var button in new[]{ok,cancel}) { button.AutoSize=false; button.MinimumSize=Size.Empty; button.Size=new Size((int)(90*scale),(int)(32*scale)); }
+            }
+            internal void CommitDraft()
+            {
+                foreach(var pair in _bindings)
+                {
+                    if(pair.Item1 is NumericUpDown) ((NumericUpDown)pair.Item1).Value=((NumericUpDown)pair.Item2).Value;
+                    else if(pair.Item1 is ComboBox) ((ComboBox)pair.Item1).SelectedIndex=((ComboBox)pair.Item2).SelectedIndex;
+                    else if(pair.Item1 is CheckBox) ((CheckBox)pair.Item1).Checked=((CheckBox)pair.Item2).Checked;
+                    else pair.Item1.Text=pair.Item2.Text;
+                }
+            }
         }
 
         private bool _inlineAlignmentPending;
@@ -109,6 +289,7 @@ namespace Aron_V2
 
         private void AlignSettingsCenterFields()
         {
+            AlignBackupBrowse();
             float scale = DesktopTheme.DisplayScale;
             btnBrowse.AutoSize = false;
             btnBrowse.MinimumSize = Size.Empty;
@@ -121,7 +302,7 @@ namespace Aron_V2
             // Native ComboBox height can become larger after handle creation
             // than TableLayoutPanel's cached preferred height. Reserve its real
             // height so the caption is centered on the combo, not a shorter row.
-            foreach (Control value in new Control[] { cboFormat.Parent, txtRoot.Parent })
+            foreach (Control value in new Control[] { cboFormat.Parent, txtRoot.Parent, _backupDirectory?.Parent })
             {
                 var line = value as TableLayoutPanel;
                 if (line == null) continue;

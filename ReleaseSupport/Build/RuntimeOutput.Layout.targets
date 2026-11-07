@@ -1,4 +1,13 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Evaluation-time includes also serve VS design-time compilation. The
+       existing import survives a stale VS project save. Exclude prevents
+       duplicates when the project already lists the source files explicitly. -->
+  <ItemGroup>
+    <Compile Include="Diagnostics\ProjectBackupService.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Diagnostics\ProjectBackupService.cs')" />
+    <Compile Include="Form\ImageRecord.Backup.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Form\ImageRecord.Backup.cs')">
+      <DependentUpon>ImageRecord.cs</DependentUpon>
+    </Compile>
+  </ItemGroup>
   <!-- SQLite's package normally copies both architectures. This application
        targets x64; retain its x64 native loader and omit only x86. -->
   <Target Name="SelectRuntimeSqliteArchitecture" BeforeTargets="CopySQLiteInteropFiles" Condition="'$(PlatformTarget)' == 'x64'">

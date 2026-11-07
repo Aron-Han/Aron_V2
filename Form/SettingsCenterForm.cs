@@ -269,6 +269,7 @@ namespace Aron_V2
 
         private void ObserveEdits(Control control)
         {
+            if(control is ImageRecord general) general.DraftChanged+=(s,e)=>MarkEdited();
             if (control is JobControlForm) return; // Catalog operations commit individually.
             var grid = control as DataGridView;
             if (grid != null)

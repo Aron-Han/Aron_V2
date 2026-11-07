@@ -25,12 +25,12 @@ namespace Aron_V2
 
         private static void Write(string text)
         {
-            DiagnosticLogStore.Record(text.StartsWith("ERROR") ? "ERROR" : "INFO", "VisionPro", text);
+            if (text.StartsWith("ERROR", StringComparison.Ordinal)) DiagnosticLogStore.Record("ERROR", "VisionPro", text);
+            else if (text.StartsWith("REJECTED", StringComparison.Ordinal)) DiagnosticLogStore.Record("WARN", "VisionPro", text);
             lock (Gate)
             {
                 string line = DateTime.Now.ToString("o") + " " + text;
                 Trace.WriteLine(line);
-                if (LogPath != null) File.AppendAllText(LogPath, line + Environment.NewLine);
             }
         }
 
@@ -118,14 +118,9 @@ namespace Aron_V2
                 _started = true;
                 Assembly application = typeof(VisionProRuntimeAudit).Assembly;
                 _expected = application.GetReferencedAssemblies().Single(a => a.Name == "Cognex.VisionPro.Core").Version;
-                string file = "VisionPro-" + DateTime.Now.ToString("yyyyMMdd-HHmmss-fff") + "-" + Process.GetCurrentProcess().Id + ".log";
-                string folder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", "VisionPro");
-                try { Directory.CreateDirectory(folder); LogPath = Path.Combine(folder, file); File.AppendAllText(LogPath, string.Empty); }
-                catch (UnauthorizedAccessException)
-                {
-                    folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Aron", "Logs", "VisionPro");
-                    Directory.CreateDirectory(folder); LogPath = Path.Combine(folder, file);
-                }
+                // Retain dependency checks; errors use the shared diagnostic writer.
+                // Successful checks no longer generate a second per-start log file.
+                LogPath = DiagnosticLogStore.Root ?? Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs", "Diagnostics");
                 Write("Expected managed VisionPro version=" + _expected + "; x64=" + Environment.Is64BitProcess + "; app=" + application.Location);
                 if (!Environment.Is64BitProcess) throw new BadImageFormatException("This VisionPro application requires an x64 process.");
                 // Subscribe before loading the dependency closure. Do not install

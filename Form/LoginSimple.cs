@@ -192,12 +192,14 @@ namespace Aron_V2
 				if (UserStore.VerifyLogin(store, user, pwd, out var rec))
 				{
 					LoggedInUser = rec;
+                    OperationAudit.Record("Login", "Authentication succeeded", user);
 					DialogResult = DialogResult.OK;
 					Close();
 				}
 				else
 				{
 					lblInfo.Text = "Account or password error";
+                    OperationAudit.Record("Login", "Authentication failed", user);
 				}
 			}
 			catch (Exception ex)
@@ -227,6 +229,7 @@ namespace Aron_V2
 					{
 						UserStore.Save(store);
 						MessageBox.Show("Password changed successfully", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        OperationAudit.Record("Login", "Password changed", user);
 					}
 					else
 					{
@@ -256,6 +259,7 @@ namespace Aron_V2
 					{
 						UserStore.Save(store);
 						MessageBox.Show("registered successfully", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        OperationAudit.Record("Login", "User created", dlg.Username + " / " + dlg.Role);
 						LoadUsersToCombo();
 						var idx = cboUsers.Items.IndexOf(dlg.Username);
 						if (idx >= 0) cboUsers.SelectedIndex = idx;
@@ -295,6 +299,7 @@ namespace Aron_V2
 				{
 					UserStore.Save(store);
 					MessageBox.Show("Delete successfully", "OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    OperationAudit.Record("Login", "User deleted", target);
 					LoadUsersToCombo();
 				}
 				else

@@ -96,6 +96,7 @@ namespace Aron_V2
 			InitializeComponent();
 			if (LicenseManager.UsageMode != LicenseUsageMode.Designtime) InitializeOnlineStateButton();
 			InitializeCameraMenus();
+			InitializeDatabaseMenu();
 			InitializeSettingsCenterMenu();
 			InitializeManualSimulationMenu();
 			InitializeHelpMenu();
@@ -229,6 +230,8 @@ namespace Aron_V2
 
 					// 2) 应用权限
 					ApplyPermissions(user);
+					OperationAudit.SetUser(user.Username);
+					OperationAudit.Record("Login", "Login succeeded", user.Username + " / " + user.Role);
 				}
 			}
 		}
@@ -1310,6 +1313,7 @@ namespace Aron_V2
 				case "Guest_Login":
 					//toolStripStatusLabel2.Text = "Guest";
 					Global.currentUser = "Guest";
+                    OperationAudit.SetUser("Guest");
 					break;
 				case "JobID0":
 					for (int i = 0; i < Global.CamN_Use; i++)
@@ -2738,6 +2742,7 @@ namespace Aron_V2
 
 		public void ApplyPermissions(UserRecord user)
 		{
+            OperationAudit.SetUser(user?.Username);
 			// 解析XML得到权限集合
 			var ps = PermissionManager.Resolve(user);
 
@@ -2827,7 +2832,7 @@ namespace Aron_V2
 			Color color = connected ? Color.Green : Color.Red;
 			if (_communicationStatus.ForeColor != color) _communicationStatus.ForeColor = color;
 			if (!_cameraValidationComplete || _switchingOnline || _cameraRestartRequested != 0) return;
-			bool online = _runOnline && _licenseOk && connected;
+			bool online = IsEffectivelyOnline;
 			text = online ? "Online" : "Offline";
 			color = online ? Color.Green : (!_runOnline && _licenseOk && connected ? Color.Yellow : Color.Red);
 			if (button3.Text != UiLanguage.Text(text)) button3.Text = text;

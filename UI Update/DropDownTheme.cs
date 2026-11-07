@@ -22,6 +22,8 @@ namespace Aron_V2
         private static DesktopIcon MenuIcon(ToolStripItem item)
         {
             string key = item.Name.ToLowerInvariant();
+            if (key.Contains("operationlog")) return DesktopIcon.Manual;
+            if (key.Contains("database")) return DesktopIcon.Database;
             if (key.Contains("exportdiagnostics")) return DesktopIcon.Export;
             if (key.Contains("helpcommunication")) return DesktopIcon.Communication;
             if (key.Contains("help")) return DesktopIcon.Help;

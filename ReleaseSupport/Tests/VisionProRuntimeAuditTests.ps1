@@ -21,7 +21,8 @@ foreach ($scenario in @('MissingManifest','MixedDll')) {
         if ($LASTEXITCODE -ne 0) { throw 'Could not compile foreign-DLL fixture.' }
     }
     Check-Exit $exe 2 "$scenario is rejected before application/device startup"
-    $logs = @(Get-ChildItem -LiteralPath (Join-Path $folder 'Logs\VisionPro') -Filter '*.log')
+    if(Test-Path -LiteralPath (Join-Path $folder 'Logs\VisionPro')) { throw 'Legacy VisionPro log directory was recreated.' }
+    $logs = @(Get-ChildItem -LiteralPath (Join-Path $folder 'Logs\Diagnostics') -Filter '*.jsonl')
     if ($logs.Count -eq 0 -or !(Select-String -LiteralPath $logs[0].FullName -Pattern 'ERROR' -Quiet)) { throw 'Missing actionable diagnostic log.' }
     Write-Host "PASS $scenario produces an error log"
 }

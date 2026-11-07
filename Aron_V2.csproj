@@ -619,6 +619,18 @@
       <Name>Aron.PluginContracts</Name>
     </ProjectReference>
     <Compile Include="Diagnostics\DiagnosticLogStore.cs" />
+    <Compile Include="Diagnostics\OperationAudit.cs" />
+    <Compile Include="Diagnostics\ProjectBackupService.cs" />
+    <Compile Include="Form\ImageRecord.Backup.cs">
+      <DependentUpon>ImageRecord.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Diagnostics\OperationAuditUi.cs" />
+    <Compile Include="Form\OperationLogForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\FormMain.OperationLog.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Diagnostics\DiagnosticExceptionHooks.cs" />
     <Compile Include="Diagnostics\DiagnosticPackageExporter.cs" />
     <Reference Include="System.IO.Compression" />

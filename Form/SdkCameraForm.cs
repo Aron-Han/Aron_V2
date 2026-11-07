@@ -37,7 +37,10 @@ namespace Aron_V2
             var body = new Panel { Dock = DockStyle.Fill };
             _settings = new CameraBindingPanel(true, category) { ReadSerial = () => _serial.Text,
                 ReadPosition = () => _positions.SelectedItem as string,
-                CanUseDevice = () => !(Owner is FormMain main) || main.CanTestSdkCamera };
+                CanUseDevice = () => !(Owner is FormMain main) || main.CanTestSdkCamera,
+                DeviceBlockReason = () => (Owner as FormMain)?.SdkCameraTestBlockReason(),
+                DeviceState = () => (Owner as FormMain)?.SdkCameraTestState,
+                AcquireDeviceLease = () => (Owner as FormMain)?.AcquireSdkTestGates() };
             body.Controls.Add(_settings); body.Controls.Add(_empty); root.Controls.Add(body, 0, 1); Controls.Add(root);
             _empty.Text = "No " + category + " cameras configured in this job.\r\nAdd a camera in GeneralConfig and select its Mode / SDK brand.\r\nThis category page is reserved for future providers.";
             _jobs.SelectedIndexChanged += (s, e) => { if (!_updating) RefreshCameras(); };
@@ -99,7 +102,7 @@ namespace Aron_V2
             if (SelectedCamera == null) return;
             try
             {
-                if (Owner is FormMain main && !main.CanTestSdkCamera) throw new InvalidOperationException("Switch Offline and wait for inspections before changing camera bindings.");
+                if (Owner is FormMain main && !main.CanTestSdkCamera) throw new InvalidOperationException(main.SdkCameraTestBlockReason());
                 var draft = _settings.Draft();
                 CameraAcquisition.SaveBinding(Global.ParameterCogfig, _jobs.SelectedItem as string, _cameras.SelectedItem as string, draft);
                 CameraAcquisition.CopyBinding(draft, SelectedCamera);

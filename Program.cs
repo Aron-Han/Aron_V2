@@ -51,7 +51,7 @@ namespace Aron_V2
             DiagnosticExceptionHooks.Install();
             try { MainCore(args); }
             catch (Exception ex) { DiagnosticLogStore.WriteCrashReport(ex, "Program.Main", true); throw; }
-            finally { DiagnosticLogStore.Shutdown(); }
+            finally { OperationAudit.Shutdown(); DiagnosticLogStore.Shutdown(); }
 		}
 
         private static void MainCore(string[] args)
@@ -87,6 +87,8 @@ namespace Aron_V2
 			ProjectPaths.OrganizeApplicationData();
 			ImageRecord.LoadSettings();
 			UiLanguage.Start(ImageRecord.Current.Language);
+			OperationAudit.Initialize();
+			OperationAuditUi.Install();
 			UI_Control.Init();
 			using (var main = new FormMain())
 			{
@@ -101,7 +103,7 @@ namespace Aron_V2
 				}
 
 				// ④ 真正进入消息循环（这时所有控件名/文本已被 LoadJob 期间的事件更新过）
-				Application.Run(main);
+				using (var backups = new ProjectBackupService()) Application.Run(main);
 			}
 
 			if (Interlocked.CompareExchange(ref _cameraRestartRequested, 0, 0) == 1)

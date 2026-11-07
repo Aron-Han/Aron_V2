@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace Aron_V2
 {
-    internal enum DesktopIcon { User, Settings, Database, Tools, Manual, Camera, Algorithm, Sliders, Ruler, Communication, Rotation, Trigger, Send, Help, About, Job, Palette, Export }
+    internal enum DesktopIcon { User, Settings, Database, Tools, Manual, Camera, Algorithm, Sliders, Ruler, Communication, Rotation, Trigger, Send, Help, About, Job, Palette, Export, Hand }
 
     // Native Button behavior (Click, mnemonics, tab order, Enabled and accessibility)
     // is retained; only rendering is replaced for the three camera actions.
@@ -289,7 +289,7 @@ namespace Aron_V2
             menu.ShowItemToolTips = false;
             menu.ImageScalingSize = new Size((int)(28 * scale), (int)(28 * scale));
             menu.Renderer = new DesktopMenuRenderer(scale);
-            var kinds = new[] { DesktopIcon.User, DesktopIcon.Settings, DesktopIcon.Database, DesktopIcon.Tools, DesktopIcon.Manual, DesktopIcon.Help, DesktopIcon.About };
+            var kinds = new[] { DesktopIcon.User, DesktopIcon.Settings, DesktopIcon.Database, DesktopIcon.Tools, DesktopIcon.Hand, DesktopIcon.Help, DesktopIcon.About };
             var images = new Image[Math.Min(menu.Items.Count, kinds.Length)];
             for (int i = 0; i < images.Length; i++)
             {
@@ -445,6 +445,21 @@ namespace Aron_V2
                         {
                             book.AddLines(new[] { new PointF(16, 7), new PointF(12, 4), new PointF(3, 4), new PointF(3, 26), new PointF(12, 26), new PointF(16, 29), new PointF(20, 26), new PointF(29, 26), new PointF(29, 4), new PointF(20, 4), new PointF(16, 7), new PointF(16, 29) });
                             g.DrawPath(pen, book);
+                        }
+                        break;
+                    case DesktopIcon.Hand:
+                        using (var hand = new GraphicsPath())
+                        {
+                            hand.AddLine(11,29,11,26);
+                            hand.AddBezier(11,26,8,24,6,21,3.7F,17);
+                            hand.AddBezier(3.7F,17,2.1F,14,4.6F,12.8F,6.3F,14.8F);
+                            hand.AddLine(6.3F,14.8F,9,18); hand.AddLine(9,18,9,7);
+                            hand.AddBezier(9,7,9,3.5F,13,3.5F,13,7); hand.AddLine(13,7,13,14);
+                            hand.AddLine(13,14,13,4.5F); hand.AddBezier(13,4.5F,13,1,17,1,17,4.5F); hand.AddLine(17,4.5F,17,14);
+                            hand.AddLine(17,14,17,6); hand.AddBezier(17,6,17,2.5F,21,2.5F,21,6); hand.AddLine(21,6,21,14);
+                            hand.AddLine(21,14,21,9); hand.AddBezier(21,9,21,5.5F,25,5.5F,25,9); hand.AddLine(25,9,25,19);
+                            hand.AddBezier(25,19,25,23,24,25,22,27); hand.AddLine(22,27,22,29);
+                            g.DrawPath(pen,hand);
                         }
                         break;
                 }

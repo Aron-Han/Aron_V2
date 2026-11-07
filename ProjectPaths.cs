@@ -16,6 +16,7 @@ namespace Aron_V2
             ["General/DisplayLayout.xml"] = new[] { "Project/Config/DisplayLayout.xml" },
             ["General/LogView.xml"] = new[] { "Project/Config/LogView.xml" },
             ["General/MainLayout.xml"] = new string[0],
+            ["General/ProjectBackup.xml"] = new string[0],
             ["Jobs/Parameter.xml"] = new[] { "Project/Config/Parameter.xml" },
             ["Security/users.xml"] = new[] { "users.xml" },
             ["Security/UserAccess.xml"] = new[] { "Project/Config/UserAccess.xml" },

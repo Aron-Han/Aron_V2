@@ -61,12 +61,17 @@ namespace Aron_V2
         }
         private static void PluginLog(string level, string message)
         {
+            if (!IsPluginWarning(level)) return;
             try
             {
                 DiagnosticLogStore.Record(level, "Plugins", message);
                 UI_Update.LogChangeEventArgs.Set("Log", "[Plugins] " + message, level == "ERROR" ? Color.Red : level == "WARN" ? Color.Orange : Color.Black);
             }
             catch { }
+        }
+        private static bool IsPluginWarning(string level)
+        {
+            return new[] { "WARN", "WARNING", "ERROR", "CRITICAL", "FATAL" }.Contains(level, StringComparer.OrdinalIgnoreCase);
         }
         private InspectionSnapshot CreatePluginSnapshot(CogToolBlock tool, string job, string camera, string position, int channel, string result, DateTime captured)
         {
@@ -103,7 +108,6 @@ namespace Aron_V2
         private sealed class PluginHost : IPluginHost
         {
             private readonly FormMain _main;
-            private readonly object _logLock = new object();
             private readonly string _id;
             public string ConfigDirectory { get; private set; }
             public string DataDirectory { get; private set; }
@@ -115,8 +119,9 @@ namespace Aron_V2
                 _main = main; _id = id; string root = AppDomain.CurrentDomain.BaseDirectory;
                 ConfigDirectory = Path.Combine(root, "Project", "Config", "Plugins", id);
                 DataDirectory = Path.Combine(root, "Data", "Plugins", id);
-                LogDirectory = Path.Combine(root, "Logs", "Plugins", id);
-                Directory.CreateDirectory(ConfigDirectory); Directory.CreateDirectory(DataDirectory); Directory.CreateDirectory(LogDirectory);
+                // Keep the plugin API compatible while sharing diagnostic storage.
+                LogDirectory = DiagnosticLogStore.Root ?? Path.Combine(root, "Logs", "Diagnostics");
+                Directory.CreateDirectory(ConfigDirectory); Directory.CreateDirectory(DataDirectory);
             }
             public IList<CameraPosition> GetCatalog()
             {
@@ -130,27 +135,6 @@ namespace Aron_V2
             }
             public void Log(string level, string message)
             {
-                try
-                {
-                    lock (_logLock)
-                    {
-                        string path = Path.Combine(LogDirectory, "Plugin_" + DateTime.Now.ToString("yyyyMMdd") + ".log");
-                        int part = 0;
-                        while (File.Exists(path) && new FileInfo(path).Length > 20L * 1024 * 1024)
-                            path = Path.Combine(LogDirectory, "Plugin_" + DateTime.Now.ToString("yyyyMMdd") + "_" + (++part).ToString("000") + ".log");
-                        if (!File.Exists(path))
-                        {
-                            long total = 0;
-                            foreach (var file in new DirectoryInfo(LogDirectory).GetFiles("Plugin_*.log").OrderByDescending(f => f.LastWriteTimeUtc))
-                            {
-                                total += file.Length;
-                                if (file.LastWriteTimeUtc < DateTime.UtcNow.AddDays(-30) || total > 512L * 1024 * 1024) try { file.Delete(); } catch { }
-                            }
-                        }
-                        File.AppendAllText(path, DateTimeOffset.Now.ToString("o") + " [" + level + "] " + message + Environment.NewLine);
-                    }
-                }
-                catch (Exception ex) { PluginLog("ERROR", _id + " log write failed: " + ex.Message); }
                 PluginLog(level, _id + " | " + message);
             }
         }
