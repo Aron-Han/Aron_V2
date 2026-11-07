@@ -2,6 +2,7 @@
 
 - Only increment BuildVersion.txt when the user explicitly asks to update the version. Refresh build date on every build.
 - Every requested version update MUST finish with a verified GitHub push to origin, including the exact source commit, an annotated immutable `VerX.XX.XXX-yyyyMMdd_HHmmss` tag, and ReleaseRecords build hashes. Never report upload success before checking the remote tag SHA.
+- The final reply to EVERY version update request MUST explicitly state either "GitHub 上传成功" or "GitHub 上传失败". On success include version and exact tag link; on failure include the reason and pending retry. Never omit upload status even when the local build succeeds.
 - Build and test first in an isolated artifacts directory when Debug is running. Never terminate the application or overwrite field Project/config/VPP data.
 - Use ReleaseTools/Publish-Version.ps1 with the verified build output. Review staged changes, new source files and ReleaseSupport for credentials/customer data before pushing. Update its explicit new-source list when adding files; do not omit newly implemented source.
 - Repository root is this folder. Required sibling solution, build, plugin and test source is archived by the publisher under ReleaseSupport. Never archive field configurations, logs, images, VPPs, credentials, or unreviewed runtime folders.
