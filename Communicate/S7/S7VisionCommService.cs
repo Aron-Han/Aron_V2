@@ -15,7 +15,7 @@ namespace Aron_V2
 	/// 1. NewUserData  -> InputChanged
 	/// 2. NewTrigger   -> TriggerRequested
 	/// </summary>
-	public class S7VisionCommService : IVisionCommunicationService
+	public class S7VisionCommService : IVisionCommunicationService, IVisionAcquisitionNotifications
 	{
 		private readonly Dictionary<string, S7PointItem> _inputMap =
 			new Dictionary<string, S7PointItem>(StringComparer.OrdinalIgnoreCase);
@@ -32,6 +32,7 @@ namespace Aron_V2
 		private bool _bufferResults;
 		private readonly bool[] _resultValid = new bool[CommunicationConfigHelper.MaxScalableChannelCount];
 		private readonly bool[] _inspectionComplete = new bool[CommunicationConfigHelper.MaxScalableChannelCount];
+        private readonly bool[] _acquiring = new bool[CommunicationConfigHelper.MaxScalableChannelCount];
 		private readonly Dictionary<int, Queue<List<KeyValuePair<S7PointItem, string>>>> _resultQueues = new Dictionary<int, Queue<List<KeyValuePair<S7PointItem, string>>>>();
 		private readonly byte[] _echoJob = new byte[CommunicationConfigHelper.MaxScalableChannelCount], _echoPos = new byte[CommunicationConfigHelper.MaxScalableChannelCount];
 		private Queue<List<KeyValuePair<S7PointItem, string>>> Results(int channel)
@@ -429,6 +430,7 @@ namespace Aron_V2
 					_resultQueues.Clear();
 					for (int ch = 0; ch < ActiveChannelCount; ch++)
 					{
+						_acquiring[ch] = false;
 						SafeWriteBoolOutput(ch, "Trigger Ready Camera", false);
 						SafeWriteBoolOutput(ch, "Trigger Ack Camera", false);
 						SafeWriteBoolOutput(ch, "SetUserData Ack", false);
@@ -573,7 +575,10 @@ namespace Aron_V2
 							}
 					}
 
-					// Clear Exposure Complete 上升沿：PLC 请求清 Exposure Complete。
+					// NDM level handshake: Clear held high keeps Exposure Complete reset.
+					if (input.ClearExposureComplete)
+						SafeWriteBoolOutput(ch, "Exposure Complete", false);
+					// Preserve the existing rising-edge application notification.
 					if (input.ClearExposureComplete && !_lastClearExposureComplete[ch])
 					{
 						notifyInputChanged = true;
@@ -684,7 +689,7 @@ namespace Aron_V2
 		{
 			for (int ch = 0; ch < ActiveChannelCount; ch++)
 			{
-				SafeWriteBoolOutput(ch, "Trigger Ready Camera", enabled && _cameraReady && _onlineRequested);
+				SafeWriteBoolOutput(ch, "Trigger Ready Camera", enabled && _cameraReady && _onlineRequested && !_acquiring[ch]);
 
 				if (!enabled)
 					SafeWriteBoolOutput(ch, "Trigger Ack Camera", false);
@@ -742,14 +747,13 @@ namespace Aron_V2
 		{
 			lock (_serviceWriteLock)
 			{
+                if(channel<0 || channel>=ActiveChannelCount)return;
+                _acquiring[channel]=true;
 				// TriggerAck 不在这里控制。
 				// TriggerAck 由 PollTimerCallback 根据 PLC Trigger 电平直接控制。
 				SafeWriteBoolOutput(channel, "Trigger Ready Camera", false);
 
-				// 新一次检测开始前，清掉上一轮完成标志。
-				// NDM holds published results until Ack; starting another inspection
-				// must not invalidate the previously published result set.
-				SafeWriteBoolOutput(channel, "Exposure Complete", false);
+				// Exposure Complete is latched until PLC Clear Exposure Complete.
 			}
 		}
 
@@ -758,23 +762,59 @@ namespace Aron_V2
 			lock (_serviceWriteLock)
 			{
 				if (!_cameraReady || !_onlineRequested || !_started) return;
-				// Exposure Complete = true 表示拍照/检测流程已到结束阶段。
-				// PLC 最终以 Exposure Complete == true && Result Valid == true 作为完整结束条件。
-				SafeWriteBoolOutput(channel, "Exposure Complete", true);
-				SafeWriteBoolOutput(channel, "Trigger Ready Camera", _cameraReady && _onlineRequested && _lastTriggerEnable);
-
-				WriteLog("S7 Inspection End Output. CH=" + channel.ToString() + ", ExposureComplete=True, TriggerReady=" + _lastTriggerEnable.ToString());
+				// Exposure Complete is asserted at acquisition, not at inspection end.
+				// In particular, do not reassert it if the PLC cleared it during analysis.
+				// Acquisition completion, not analysis completion, owns Trigger Ready.
 			}
 		}
+        public void NotifyAcquisitionComplete(int channel)
+        {
+            lock(_serviceWriteLock)
+            {
+                if(!_cameraReady||!_onlineRequested||!_started||channel<0||channel>=ActiveChannelCount)return;
+                string clear;
+                // Read the current PLC level, not the previous polling snapshot.
+                // A failed read must never be treated as permission to assert.
+                if(!ReadInputPoint(channel,"Clear Exposure Complete",out clear))
+                {
+                    WriteLog("S7 acquisition complete: cannot read Clear Exposure Complete. CH="+channel+"; Exposure Complete was not asserted.");
+                    return;
+                }
+                bool complete=!IsTrue(clear);
+                SafeWriteBoolOutput(channel,"Exposure Complete",complete);
+                _acquiring[channel]=false;
+                SafeWriteBoolOutput(channel,"Trigger Ready Camera",ReadTriggerEnable() && _cameraReady && _onlineRequested && _started);
+                WriteLog("S7 acquisition complete. CH="+channel+"; Exposure Complete="+complete+"; inspection is not yet complete.");
+            }
+        }
 
 		public void WriteJobPosEcho(int channel, byte jobId, byte posId)
 		{
 			lock (_serviceWriteLock)
 			{
-				_echoJob[channel] = jobId; _echoPos[channel] = posId;
-				if (_bufferResults && (_resultValid[channel] || Results(channel).Count > 0)) return;
-				SafeWriteByteOutput(channel, "JobID", jobId);
-				SafeWriteByteOutput(channel, "PosID", posId);
+                if(!_cameraReady||!_onlineRequested||!_started||channel<0||channel>=ActiveChannelCount)
+                    throw new InvalidOperationException("S7 Job/Pos echo was not sent: transport is not Online/ready.");
+                _echoJob[channel]=jobId;_echoPos[channel]=posId;
+                try
+                {
+                    var packet=new List<KeyValuePair<S7PointItem,string>>();
+                    packet.Add(new KeyValuePair<S7PointItem,string>(_outputMap[MakeKey(channel,"JobID")],jobId.ToString(CultureInfo.InvariantCulture)));
+                    packet.Add(new KeyValuePair<S7PointItem,string>(_outputMap[MakeKey(channel,"PosID")],posId.ToString(CultureInfo.InvariantCulture)));
+                    // Match the Profinet metadata frame: clear this channel's old
+                    // measurements without requiring a VPP run or touching other channels.
+                    foreach(var point in _outputMap.Values.Where(p=>p.Channel==channel&&!S7OutputData.IsFixed(p.Parameter)))
+                    {
+                        string value=point.Format.Equals("String",StringComparison.OrdinalIgnoreCase)?new string('\0',point.Length):point.Format.Equals("Bool",StringComparison.OrdinalIgnoreCase)?"false":"0";
+                        packet.Add(new KeyValuePair<S7PointItem,string>(point,value));
+                    }
+                    SubmitResultFrame(channel,packet);
+                    WriteLog("S7 Job/Pos echo accepted. CH="+channel+", JobID="+jobId+", PosID="+posId+"; Result Valid / Inspection Complete use result-frame handshake.");
+                }
+                catch(Exception ex)
+                {
+                    WriteLog("S7 Job/Pos echo failed. CH="+channel+"; "+ex.Message);
+                    throw;
+                }
 			}
 		}
 
@@ -818,7 +858,25 @@ namespace Aron_V2
                     }
                     pending.Insert(0, new KeyValuePair<S7PointItem, string>(_outputMap[MakeKey(channel, "JobID")], _echoJob[channel].ToString(CultureInfo.InvariantCulture)));
                     pending.Insert(1, new KeyValuePair<S7PointItem, string>(_outputMap[MakeKey(channel, "PosID")], _echoPos[channel].ToString(CultureInfo.InvariantCulture)));
-                    bool ack = ReadBoolInput(channel, "Inspection Result Acknowledge");
+                    SubmitResultFrame(channel,pending);
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    if (!_bufferResults) { WriteOutputPoint(channel, "Result Valid", "false"); _resultValid[channel] = false; }
+                    WriteLog("S7 result not published. CH=" + channel + "; Result Valid not asserted; " + ex.Message);
+                    return false;
+                }
+            }
+        }
+
+        // Called under _serviceWriteLock for both metadata echo and inspection results.
+        private void SubmitResultFrame(int channel,List<KeyValuePair<S7PointItem,string>> pending)
+        {
+                    string ackValue;
+                    if(!ReadInputPoint(channel,"Inspection Result Acknowledge",out ackValue))
+                        throw new IOException("Cannot read Inspection Result Acknowledge. CH="+channel);
+                    bool ack = IsTrue(ackValue);
                     if (_bufferResults && (_resultValid[channel] || ack || Results(channel).Count > 0))
                     {
                         // Sixteen outstanding result sets including the currently published set.
@@ -829,7 +887,7 @@ namespace Aron_V2
                             if (!WriteOutputPoint(channel, "Inspection Complete", droppedToggle.ToString())) throw new IOException("Inspection Complete write failed.");
                             _inspectionComplete[channel] = droppedToggle;
                             WriteLog("S7 results buffer overrun. CH=" + channel + "; newest result dropped, capacity=16.");
-                            return true;
+                            return;
                         }
                         Results(channel).Enqueue(pending);
                     }
@@ -847,15 +905,6 @@ namespace Aron_V2
                     if (!WriteOutputPoint(channel, "Inspection Complete", completed.ToString())) throw new IOException("Inspection Complete write failed.");
                     _inspectionComplete[channel] = completed;
                     WriteLog("S7 inspection completed. CH=" + channel + ", buffered=" + _bufferResults + ", queued=" + Results(channel).Count + ", ResultValid=" + _resultValid[channel] + ", Complete=" + completed);
-                    return true;
-                }
-                catch (Exception ex)
-                {
-                    if (!_bufferResults) { WriteOutputPoint(channel, "Result Valid", "false"); _resultValid[channel] = false; }
-                    WriteLog("S7 result not published. CH=" + channel + "; Result Valid not asserted; " + ex.Message);
-                    return false;
-                }
-            }
         }
 
 		private void WriteChannelSummaryResult(int channel, short resultCode)
@@ -885,7 +934,7 @@ namespace Aron_V2
 				SafeWriteBoolOutput(channel, "Result Valid", false);
 				_resultValid[channel] = false;
 
-				SafeWriteBoolOutput(channel, "Trigger Ready Camera", _cameraReady && _onlineRequested && _lastTriggerEnable);
+				SafeWriteBoolOutput(channel, "Trigger Ready Camera", _cameraReady && _onlineRequested && _lastTriggerEnable && !_acquiring[channel]);
 			}
 		}
 
@@ -898,14 +947,14 @@ namespace Aron_V2
 				// ClearResult 指令使用：清除上一轮检测所有结果输出。
 				// TriggerAck 只跟随 PLC Trigger 电平，不在这里强制清。
 				SafeWriteBoolOutput(channel, "Result Valid", false);
-				SafeWriteBoolOutput(channel, "Exposure Complete", false);
+				// Clear Result does not acknowledge acquisition completion.
 
 				SafeWriteFloatOutput(channel, "Result X", 0);
 				SafeWriteFloatOutput(channel, "Result Y", 0);
 				SafeWriteFloatOutput(channel, "Result A", 0);
 				WriteChannelSummaryResult(channel, 0);
 
-				SafeWriteBoolOutput(channel, "Trigger Ready Camera", _cameraReady && _onlineRequested && _lastTriggerEnable);
+				SafeWriteBoolOutput(channel, "Trigger Ready Camera", _cameraReady && _onlineRequested && _lastTriggerEnable && !_acquiring[channel]);
 			}
 		}
 

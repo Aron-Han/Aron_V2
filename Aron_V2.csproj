@@ -310,6 +310,15 @@
     <Compile Include="Parameters\BlankCameraVpp.cs" />
     <Compile Include="Parameters\JobCatalog.cs" />
     <Compile Include="Parameters\InspectionVppContract.cs" />
+    <Compile Include="SaveImage\ImageStoragePolicy.cs" />
+    <Compile Include="Form\ImageRecord.Storage.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form\FormMain.CameraRecovery.cs" />
+    <Compile Include="Form\FormMain.Acquisition.cs" />
+    <EmbeddedResource Include="$(VisionProSdkRoot)\bin\Templates\Tools\3D Tools\Cog3DRangeGreySplitterScript.vtt">
+      <LogicalName>Aron.RangeGreySplitter.vtt</LogicalName>
+    </EmbeddedResource>
     <Compile Include="Parameters\InspectionCacheEdit.cs" />
     <Compile Include="Help\HelpContent.cs" />
     <Compile Include="Form\HelpForm.cs">
@@ -623,6 +632,7 @@
     <Compile Include="Diagnostics\ProjectBackupService.cs" />
     <Compile Include="Form\ImageRecord.Backup.cs">
       <DependentUpon>ImageRecord.cs</DependentUpon>
+      <SubType>Form</SubType>
     </Compile>
     <Compile Include="Diagnostics\OperationAuditUi.cs" />
     <Compile Include="Form\OperationLogForm.cs">

@@ -109,6 +109,9 @@ namespace Aron_V2
         /// <returns></returns>
         public bool InitCommCard()
         {
+            // This singleton owns the port for the lifetime of the process.
+            // Reuse it after Stop/Start instead of creating a second port 0.
+            if(mCard!=null && mEthernetPort!=null) return true;
             mCards = new CogCommCards();     //初始化Profinet卡，查找安装的CC24卡的张数
             if (mCards.Count == 0)
             {
@@ -199,7 +202,7 @@ namespace Aron_V2
                 res.ResultCode = 5;
 
                 // Construct an object which identifies which image(s) were processed to create the inspection result.
-                CogNdmUsedAcquisitionIDCollection ids = new CogNdmUsedAcquisitionIDCollection() { new CogNdmUsedAcquisitionID(1, 0) };
+                CogNdmUsedAcquisitionIDCollection ids = new CogNdmUsedAcquisitionIDCollection() { new CogNdmUsedAcquisitionID(0, InspectionIndex) };
 
                 // Add the processed image ids to the result object.
                 res.UsedAcquisitionIDs = ids;
@@ -233,10 +236,39 @@ namespace Aron_V2
 				result.ResultData = snapshot;
 				result.ResultDataOffset = offset;
 				result.ResultCode = 5;
-				result.UsedAcquisitionIDs = new CogNdmUsedAcquisitionIDCollection() { new CogNdmUsedAcquisitionID(1, 0) };
+				result.UsedAcquisitionIDs = new CogNdmUsedAcquisitionIDCollection() { new CogNdmUsedAcquisitionID(0, inspectionIndex) };
 				mNdm.NotifyInspectionComplete(result);
 			}
 		}
+        internal void SendJobPosEcho(int channel,byte job,byte pos)
+        {
+            lock(sendLock)
+            {
+                if(!_isConnected||mNdm==null||!_operatingOnline) throw new InvalidOperationException("Profinet Job/Pos echo unavailable: NDM not connected/Online.");
+                var result=CreateJobPosEchoFrame(channel,job,pos);
+                // A metadata result frame is explicitly requested by the PLC workflow.
+                // This sends no acquisition notification. NDM owns Result Valid/completion/ACK buffering.
+                mNdm.NotifyInspectionComplete(result);
+            }
+        }
+        internal static CogNdmInspectionResult CreateJobPosEchoFrame(int channel,byte job,byte pos)
+        {
+            byte[] snapshot=Profinet.ProfinetDataMapper.PrepareJobPosEcho(channel,job,pos);
+            return new CogNdmInspectionResult { InspectionIndex=channel,InspectionPassed=true,ResultCode=5,ResultData=snapshot,ResultDataOffset=0,
+                // The 9.6 SR2 API rejects an empty ID collection. Metadata-only
+                // frames use ID 0 on the corresponding channel; no camera is triggered.
+                UsedAcquisitionIDs=new CogNdmUsedAcquisitionIDCollection { new CogNdmUsedAcquisitionID(0,channel) } };
+        }
+        internal void NotifyAcquisitionCompleted(int channel)
+        {
+            lock(sendLock)
+            {
+                if(!_isConnected||mNdm==null||!_operatingOnline)return;
+                // NDM sets Exposure Complete and re-arms Trigger Ready. It still
+                // honors PLC Trigger Enable; this does not publish inspection results.
+                mNdm.NotifyAcquisitionComplete(channel,0);
+            }
+        }
         #endregion
 
         /// <summary>
@@ -377,7 +409,6 @@ namespace Aron_V2
 					if (waitForProtocol != null)
 						waitForProtocol.Enabled = true;
 				}
-
 				DataChangedEventArgs.Set("Profinet", "Offline");
 
 				LogChangeEventArgs.Set("Log",
@@ -446,23 +477,24 @@ namespace Aron_V2
 		/// <summary>
 		/// Initialize FFP for a specific protocol.
 		/// </summary>
-		public void InitFFP()
+		public bool InitFFP()
 		{
 			try
 			{
 				if (mCard == null)
 				{
 					LogChangeEventArgs.Set("Log", "InitFFP failed: CC24 card is null.", Color.Red);
-					return;
+					return false;
 				}
 
 				if (mCard.FfpAccess == null)
 				{
 					LogChangeEventArgs.Set("Log", "InitFFP failed: FFP access is null.", Color.Red);
-					return;
+					return false;
 				}
 
-				if (commType == CommType.Profinet)
+                if(mNdm!=null) { RemoveEventHandlers(); }
+				else if (commType == CommType.Profinet)
 				{
 					mNdm = mCard.FfpAccess.CreateNetworkDataModel(CogFfpProtocolConstants.Profinet);
 				}
@@ -473,13 +505,13 @@ namespace Aron_V2
 				else
 				{
 					LogChangeEventArgs.Set("Log", "InitFFP failed: unknown communication type.", Color.Red);
-					return;
+					return false;
 				}
 			}
 			catch (Exception ex)
 			{
 				LogChangeEventArgs.Set("Log", "Could not initialize Comm Card Network Data Model interface. " + ex.Message, Color.Red);
-				return;
+				return false;
 			}
 
 			try
@@ -518,6 +550,7 @@ namespace Aron_V2
 					if (waitForProtocol != null)
 						waitForProtocol.Enabled = true;
 				}
+                return true;
 			}
 			catch (Exception ex)
 			{
@@ -539,6 +572,7 @@ namespace Aron_V2
 						waitForProtocol = null;
 					}
 				}
+                return false;
 			}
 		}
 
@@ -599,15 +633,9 @@ namespace Aron_V2
 					LogChangeEventArgs.Set("Log", "Remove NDM event handlers failed: " + ex.Message, Color.Red);
 				}
 
-				try
-				{
-					if (mEthernetPort != null)
-						mEthernetPort.BringInterfaceDownAsync();
-				}
-				catch (Exception ex)
-				{
-					LogChangeEventArgs.Set("Log", "Bring interface down failed: " + ex.Message, Color.Red);
-				}
+                // Stop the protocol, retain the process-owned Ethernet port/NDM
+                // for a later restart. An asynchronous interface-down could race
+                // the next Start and disconnect a newly resumed session.
 
 				try
 				{

@@ -103,6 +103,7 @@ namespace Aron_V2
         internal event EventHandler DraftChanged;
         private void PrepareFeatureCards(Control originalLayout)
         {
+            InitializeStorageDrafts();
             // Original controls remain the sole draft backing the existing Save handler.
             originalLayout.Visible=false;
             var scroll=new Panel { Name="GeneralFeatureScroll", Dock=DockStyle.Fill, AutoScroll=true,
@@ -116,6 +117,7 @@ namespace Aron_V2
             AddFeatureCard(cards,"Display and application","Language, log visibility and application information.",
                 new CheckBox { Name="DisplayAlwaysEnabled",Checked=true,Enabled=false },"DisplayApplication",()=>OpenFeatureSettings("DisplayApplication"));
             AddFeatureCard(cards,"Project backup","Project backup interval, retention and destination.",_backupEnabled,"ProjectBackup",()=>OpenFeatureSettings("ProjectBackup"));
+            AddFeatureCard(cards,"Camera offline recovery","Automatic retry, local VPP reload and recovery scope.",_recoveryEnabled,"CameraRecovery",OpenRecoverySettings);
             UiLanguage.ApplyTo(this);
         }
         private void AddFeatureCard(TableLayoutPanel cards,string title,string description,CheckBox enabled,string key,Action configure)
@@ -157,6 +159,7 @@ namespace Aron_V2
         }
         private void OpenFeatureSettings(string key)
         {
+            if(key=="ImageStorage") { OpenStorageRules(); return; }
             using(var dialog=CreateFeatureDialog(key))
             {
                 if(dialog.ShowDialog(this)!=DialogResult.OK) return;

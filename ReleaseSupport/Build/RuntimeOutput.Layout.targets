@@ -4,6 +4,13 @@
        duplicates when the project already lists the source files explicitly. -->
   <ItemGroup>
     <Compile Include="Diagnostics\ProjectBackupService.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Diagnostics\ProjectBackupService.cs')" />
+    <Compile Include="SaveImage\ImageStoragePolicy.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\SaveImage\ImageStoragePolicy.cs')" />
+    <Compile Include="Form\ImageRecord.Storage.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Form\ImageRecord.Storage.cs')" />
+    <Compile Include="Form\FormMain.CameraRecovery.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Form\FormMain.CameraRecovery.cs')" />
+    <Compile Include="Form\FormMain.Acquisition.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Form\FormMain.Acquisition.cs')" />
+    <EmbeddedResource Include="$(VisionProSdkRoot)\bin\Templates\Tools\3D Tools\Cog3DRangeGreySplitterScript.vtt" Exclude="@(EmbeddedResource)" Condition="Exists('$(VisionProSdkRoot)\bin\Templates\Tools\3D Tools\Cog3DRangeGreySplitterScript.vtt')">
+      <LogicalName>Aron.RangeGreySplitter.vtt</LogicalName>
+    </EmbeddedResource>
     <Compile Include="Form\ImageRecord.Backup.cs" Exclude="@(Compile)" Condition="Exists('$(MSBuildProjectDirectory)\Form\ImageRecord.Backup.cs')">
       <DependentUpon>ImageRecord.cs</DependentUpon>
     </Compile>

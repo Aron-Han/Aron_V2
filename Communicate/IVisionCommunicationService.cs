@@ -2,6 +2,11 @@ using System;
 
 namespace Aron_V2
 {
+    // Optional capability preserves existing communication/plugin implementers.
+    public interface IVisionAcquisitionNotifications
+    {
+        void NotifyAcquisitionComplete(int channel);
+    }
 	/// <summary>
 	/// Protocol-independent vision/PLC handshake contract. S7 defines the
 	/// standard business sequence; Profinet and TCP/IP adapters must expose the

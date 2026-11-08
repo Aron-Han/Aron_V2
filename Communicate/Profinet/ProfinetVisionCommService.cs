@@ -6,7 +6,7 @@ namespace Aron_V2
 	/// Adapts the four-channel Cognex CC24/FFP transport to the same logical
 	/// handshake contract used by S7.
 	/// </summary>
-	public sealed class ProfinetVisionCommService : IVisionCommunicationService
+	public sealed class ProfinetVisionCommService : IVisionCommunicationService, IVisionAcquisitionNotifications
 	{
 		private readonly object _sync = new object();
 		private bool _started;
@@ -28,6 +28,7 @@ namespace Aron_V2
 		public event Action<string> LogMessage;
 
 		public bool IsStarted { get { return _started && CC24_Comm.Instance().IsConnected; } }
+        internal bool IsInitialized { get { return _started; } }
 
 		public void Start()
 		{
@@ -42,16 +43,18 @@ namespace Aron_V2
 				communication.NewTrigger += Communication_NewTrigger;
 				communication.NewUserData += Communication_NewUserData;
 
-				if (!communication.InitCommCard())
-				{
-					communication.NewTrigger -= Communication_NewTrigger;
-					communication.NewUserData -= Communication_NewUserData;
-					throw new InvalidOperationException("CC24 Profinet card was not found or could not be initialized.");
-				}
-
-				communication.InitFFP();
-				_started = true;
-				WriteLog("Profinet service started; waiting for controller connection.");
+                try
+                {
+                    if(!communication.InitCommCard()) throw new InvalidOperationException("CC24 Profinet card was not found or could not be initialized.");
+                    if(!communication.InitFFP()) throw new InvalidOperationException("CC24 Profinet NDM startup failed. See communication log.");
+                    _started=true;
+                    WriteLog("Profinet service started; waiting for controller connection.");
+                }
+                catch
+                {
+                    communication.NewTrigger-=Communication_NewTrigger;communication.NewUserData-=Communication_NewUserData;
+                    _started=false;communication.Close();throw;
+                }
 			}
 		}
 
@@ -146,12 +149,22 @@ namespace Aron_V2
 			if (!_started || !_cameraReady || !_onlineRequested) return;
 			CC24_Comm.Instance().SendSharedResultData(0, channel);
 		}
+        public void NotifyAcquisitionComplete(int channel)
+        {
+            lock(_sync)
+            {
+                if(!_started||!_cameraReady||!_onlineRequested)return;
+                CC24_Comm.Instance().NotifyAcquisitionCompleted(channel);
+            }
+        }
 
 		public void WriteJobPosEcho(int channel, byte jobId, byte posId)
 		{
 			if (channel < 0 || channel >= CommunicationConfigHelper.ProfinetChannelCount) return;
-			Profinet.ProfinetDataMapper.WriteFixedOutput(channel, "JobID", jobId);
-			Profinet.ProfinetDataMapper.WriteFixedOutput(channel, "PosID", posId);
+            if(!_started || !_cameraReady || !_onlineRequested || !CC24_Comm.Instance().IsConnected)
+                throw new InvalidOperationException("Profinet Job/Pos echo was not sent: transport is not Online/connected.");
+            CC24_Comm.Instance().SendJobPosEcho(channel,jobId,posId);
+            WriteLog("Profinet Job/Pos echo sent. CH="+channel+", JobID="+jobId+", PosID="+posId+"; Result Valid / Inspection Complete managed by NDM.");
 		}
 
 		public void WriteInspectionResult(int channel, float x, float y, float a, short resultCode)
@@ -172,7 +185,7 @@ namespace Aron_V2
 
 		public void ClearExposureComplete(int channel)
 		{
-			// Exposure-complete is represented by the CC24 inspection completion.
+			// Clear Exposure Complete is owned by NDM's PLC handshake.
 		}
 
 		private void WriteLog(string message)

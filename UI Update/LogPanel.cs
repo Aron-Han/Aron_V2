@@ -40,7 +40,7 @@ namespace Aron_V2
             return new LogEntry { Time = time, Message = message, Category = category,
                 Error = color.ToArgb() == Color.Red.ToArgb() || new[] { "failed", "error", "exception", "失败", "异常" }.Any(text.Contains),
                 Communication = isCommunication,
-                Warning = color.ToArgb() == Color.Red.ToArgb() || color.ToArgb() == Color.Orange.ToArgb() || color.ToArgb() == Color.DarkOrange.ToArgb() || warning.Any(text.Contains) };
+                Warning = color.ToArgb() == Color.Red.ToArgb() || color.ToArgb() == Color.OrangeRed.ToArgb() || color.ToArgb() == Color.Orange.ToArgb() || color.ToArgb() == Color.DarkOrange.ToArgb() || warning.Any(text.Contains) };
         }
     }
 
@@ -59,6 +59,7 @@ namespace Aron_V2
         private readonly Font _body = new Font("Segoe UI", 9F);
         private readonly Font _title = new Font("Segoe UI", 12F, FontStyle.Bold);
         private LogViewFilter _filter;
+        private ContextMenuStrip _clearMenu;
         internal int RetainedCount { get { return _entries.Count; } }
         internal int VisibleCount { get { return _visible.Count; } }
 
@@ -132,6 +133,10 @@ namespace Aron_V2
                 e.Paint(e.ClipBounds, DataGridViewPaintParts.Border); e.Handled = true;
             };
             _grid.CellDoubleClick += (s, e) => { if (e.RowIndex >= 0 && e.RowIndex < _visible.Count) ShowDetails(_visible[e.RowIndex]); };
+            _clearMenu=new ContextMenuStrip { ShowImageMargin=false };
+            var clear=new ToolStripMenuItem("Clear Log");clear.Click+=(s,e)=>ClearDisplayLog();
+            _clearMenu.Items.Add(clear);_clearMenu.Opening+=(s,e)=>clear.Text=UiLanguage.Text("Clear Log");
+            _grid.ContextMenuStrip=_clearMenu;
             layout.Controls.Add(_grid, 0, 2);
             var footer = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 2, Margin = new Padding(0, 5, 0, 0) };
             footer.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -162,10 +167,23 @@ namespace Aron_V2
         {
             if (IsDisposed || Disposing) return;
             var entry = LogEntry.Create(message, color, DateTime.Now);
+            if(!OperatorRelevant(entry)) return;
             lock (_pending) { if (_pending.Count == Capacity) _pending.Dequeue(); _pending.Enqueue(entry); }
         }
 
-        private bool Matches(LogEntry entry) { return _filter == LogViewFilter.All ? (_allCategories & entry.Category) != 0 : (_filter == LogViewFilter.Warning ? entry.Warning : entry.Communication); }
+        private static bool OperatorRelevant(LogEntry entry)
+        {
+            // Keep routine editor/cache/loading steps out of the operator panel.
+            // Disk diagnostics and publishers are unaffected by this presentation filter.
+            bool recovery=entry.Message.StartsWith("Camera recovery: ",StringComparison.Ordinal)||entry.Message.StartsWith("相机恢复：",StringComparison.Ordinal);
+            bool result=entry.Message.StartsWith("Result: ",StringComparison.Ordinal)||entry.Message.IndexOf("Inspection result:",StringComparison.OrdinalIgnoreCase)>=0||entry.Message.Contains("检测结果：");
+            return entry.Warning||entry.Communication||recovery||result;
+        }
+        private bool Matches(LogEntry entry)
+        {
+            if(!OperatorRelevant(entry)) return false;
+            return _filter == LogViewFilter.All ? (_allCategories & entry.Category) != 0 : (_filter == LogViewFilter.Warning ? entry.Warning : entry.Communication);
+        }
 
         internal void FlushPending()
         {
@@ -174,7 +192,12 @@ namespace Aron_V2
             lock (_pending) { if (_pending.Count == 0) return; batch = _pending.ToArray(); _pending.Clear(); }
             int first = _grid.FirstDisplayedScrollingRowIndex;
             LogEntry firstEntry = first >= 0 && first < _visible.Count ? _visible[first] : null;
-            _entries.AddRange(batch);
+            foreach(var entry in batch)
+            {
+                if(entry.Message.StartsWith("Camera recovery: ",StringComparison.Ordinal)||entry.Message.StartsWith("相机恢复：",StringComparison.Ordinal))
+                    _entries.RemoveAll(e=>e.Message.StartsWith("Camera recovery: ",StringComparison.Ordinal)||e.Message.StartsWith("相机恢复：",StringComparison.Ordinal));
+                _entries.Add(entry);
+            }
             if (_entries.Count > Capacity) _entries.RemoveRange(0, _entries.Count - Capacity);
             // Bounded rebuild of references, not of DataGridView rows/columns.
             _visible.Clear(); _visible.AddRange(_entries.AsEnumerable().Reverse().Where(Matches).OrderByDescending(entry => entry.Time));
@@ -202,10 +225,16 @@ namespace Aron_V2
         {
             using (var dialog = new LogDetailsForm(entry)) dialog.ShowDialog(this);
         }
+        internal void ClearDisplayLog()
+        {
+            lock(_pending) _pending.Clear();
+            _entries.Clear();_visible.Clear();_grid.RowCount=0;_grid.Invalidate();
+            OperationAudit.Record("Log","Clear display","Main log display cleared; persistent logs retained.");
+        }
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing) { _refresh.Stop(); _refresh.Dispose(); _settingsMenu?.Dispose(); }
+            if (disposing) { _refresh.Stop(); _refresh.Dispose(); _settingsMenu?.Dispose(); _clearMenu?.Dispose(); }
             base.Dispose(disposing);
             if (disposing) { _body.Dispose(); _title.Dispose(); }
         }

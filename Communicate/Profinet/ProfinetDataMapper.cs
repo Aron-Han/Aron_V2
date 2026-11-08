@@ -43,6 +43,22 @@ namespace Aron_V2.Profinet
 			ProfinetOutputPoint point = ProfinetCommConfigHelper.GetOutputPoint(channel, parameter);
 			lock (Global.PlcBufferLock) Write(Global.Result_Send, point.Address, point.Length, point.DataType, value);
 		}
+        internal static byte[] PrepareJobPosEcho(int channel,byte job,byte pos)
+        {
+            var points=ProfinetCommConfigHelper.Load().OutputPoints.Where(p=>p.Channel==channel).ToArray();
+            var jobPoint=points.Single(p=>p.IsFixed && p.Parameter.Equals("JobID",StringComparison.OrdinalIgnoreCase));
+            var posPoint=points.Single(p=>p.IsFixed && p.Parameter.Equals("PosID",StringComparison.OrdinalIgnoreCase));
+            foreach(var p in points)
+                if(p.Address<0||p.Length<=0||(long)p.Address+p.Length>Global.Result_Send.Length)
+                    throw new InvalidOperationException("Profinet echo mapping outside Result buffer: "+p.Parameter);
+            lock(Global.PlcBufferLock)
+            {
+                foreach(var p in points.Where(p=>!p.IsFixed)) Array.Clear(Global.Result_Send,p.Address,p.Length);
+                Write(Global.Result_Send,jobPoint.Address,jobPoint.Length,jobPoint.DataType,job);
+                Write(Global.Result_Send,posPoint.Address,posPoint.Length,posPoint.DataType,pos);
+                return (byte[])Global.Result_Send.Clone();
+            }
+        }
 
 		public static void ApplyVppOutputs(int channel, CogToolBlock tool)
 		{

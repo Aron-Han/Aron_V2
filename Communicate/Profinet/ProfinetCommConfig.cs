@@ -39,6 +39,7 @@ namespace Aron_V2.Profinet
 
 	public static class ProfinetCommConfigHelper
 	{
+        private static readonly object ConfigLock=new object();
 		public const int ProcessDataLength = 240;
 		public static readonly string[] InputParameterNames = { "Clear Result", "JobID", "PosID", "PartN" };
 		public static readonly string[] SupportedDataTypes = { "Bool", "Byte", "Int16", "Int32", "Float", "Double", "String" };
@@ -61,23 +62,33 @@ namespace Aron_V2.Profinet
 
 		public static ProfinetCommConfig Load()
 		{
+            lock(ConfigLock) {
 			try
 			{
 				if (!File.Exists(DefaultPath)) { ProfinetCommConfig created = CreateDefault(); Save(created); return created; }
 				XmlSerializer serializer = new XmlSerializer(typeof(ProfinetCommConfig));
-				using (FileStream stream = new FileStream(DefaultPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+				using (FileStream stream = new FileStream(DefaultPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite|FileShare.Delete))
 					return Normalize(serializer.Deserialize(stream) as ProfinetCommConfig);
 			}
 			catch { ProfinetCommConfig created = CreateDefault(); Save(created); return created; }
+            }
 		}
 
 		public static void Save(ProfinetCommConfig config)
 		{
+            lock(ConfigLock) {
 			config = Normalize(config);
 			string directory = Path.GetDirectoryName(DefaultPath);
 			if (!Directory.Exists(directory)) Directory.CreateDirectory(directory);
 			XmlSerializer serializer = new XmlSerializer(typeof(ProfinetCommConfig));
-			using (FileStream stream = new FileStream(DefaultPath, FileMode.Create, FileAccess.Write, FileShare.Read)) serializer.Serialize(stream, config);
+            string temporary=DefaultPath+"."+Guid.NewGuid().ToString("N")+".tmp";
+            try
+            {
+                using(var stream=new FileStream(temporary,FileMode.CreateNew,FileAccess.Write,FileShare.None)) {serializer.Serialize(stream,config);stream.Flush(true);}
+                if(File.Exists(DefaultPath)) File.Replace(temporary,DefaultPath,null);else File.Move(temporary,DefaultPath);
+            }
+            finally { if(File.Exists(temporary)) File.Delete(temporary); }
+            }
 		}
 
 		public static ProfinetInputPoint GetInputPoint(int channel, string parameter)
@@ -124,6 +135,7 @@ namespace Aron_V2.Profinet
 			config.OutputPoints = config.OutputPoints.Where(IsValidOutput).OrderBy(x => x.Address).ThenBy(x => x.Channel).ThenBy(x => x.Parameter).ToList();
 			foreach (ProfinetInputPoint item in config.InputPoints) NormalizePoint(item);
 			foreach (ProfinetOutputPoint item in config.OutputPoints) NormalizePoint(item);
+            foreach(var item in config.OutputPoints.Where(p=>p.Parameter.Equals("JobID",StringComparison.OrdinalIgnoreCase)||p.Parameter.Equals("PosID",StringComparison.OrdinalIgnoreCase))) item.IsFixed=true;
 			return config;
 		}
 

@@ -22,6 +22,9 @@ public static class IoWorkers
 		public string FullPath;
 		public string Ext;        // ".jpg" / ".png" / ".bmp"
 		public Bitmap Bmp;
+		public ICogImage NativeImage;
+        public string ImageKind;
+        internal string ReservedPath;
 	}
 
 	// —— 2) FTP 上传任务 ——
@@ -42,6 +45,8 @@ public static class IoWorkers
 
 	private static readonly BlockingCollection<FtpUploadTask> _ftpQ =
 		new BlockingCollection<FtpUploadTask>(new ConcurrentQueue<FtpUploadTask>(), 1024);
+    private static readonly object PathGate=new object();
+    private static readonly System.Collections.Generic.HashSet<string> PendingPaths=new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
 	private static CancellationTokenSource _cts;
 	private static Thread _imgThread;
@@ -109,9 +114,19 @@ public static class IoWorkers
 		if (job == null)
 			return;
 
+        lock(PathGate)
+        {
+            string original=job.FullPath;
+            while(PendingPaths.Contains(job.FullPath)||File.Exists(job.FullPath))
+                job.FullPath=Path.Combine(Path.GetDirectoryName(original),Path.GetFileNameWithoutExtension(original)+"_"+Guid.NewGuid().ToString("N")+Path.GetExtension(original));
+            job.ReservedPath=job.FullPath;PendingPaths.Add(job.ReservedPath);
+        }
+
 		if (!_imgQ.TryAdd(job))
 		{
 			try { job.Bmp?.Dispose(); } catch { }
+			try { (job.NativeImage as IDisposable)?.Dispose(); } catch { }
+            lock(PathGate) PendingPaths.Remove(job.ReservedPath);
 			LogChangeEventArgs.Set("Log", "Image queue is full, drop one frame.", Color.OrangeRed);
 		}
 	}
@@ -141,7 +156,21 @@ public static class IoWorkers
 					if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir))
 						Directory.CreateDirectory(dir);
 
-					if (job.Ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
+					if (job.NativeImage != null)
+					{
+                        // Native VisionPro writer preserves 3D range/calibration in CDB.
+                        // Write a unique staging file, then publish without overwriting another frame.
+                        string temp=Path.Combine(dir,Guid.NewGuid().ToString("N")+job.Ext);
+                        try
+                        {
+                            using(var file=new Cognex.VisionPro.ImageFile.CogImageFile())
+                            { file.Open(temp,Cognex.VisionPro.ImageFile.CogImageFileModeConstants.Write); file.Append(job.NativeImage); file.Close(); }
+                            if(File.Exists(job.FullPath)) job.FullPath=Path.Combine(dir,Path.GetFileNameWithoutExtension(job.FullPath)+"_"+Guid.NewGuid().ToString("N")+job.Ext);
+                            File.Move(temp,job.FullPath);
+                        }
+                        finally { if(File.Exists(temp)) File.Delete(temp); }
+					}
+					else if (job.Ext.Equals(".jpg", StringComparison.OrdinalIgnoreCase) ||
 						job.Ext.Equals(".jpeg", StringComparison.OrdinalIgnoreCase))
 					{
 						var enc = ImageCodecInfo.GetImageEncoders()
@@ -186,6 +215,8 @@ public static class IoWorkers
 				finally
 				{
 					try { job?.Bmp?.Dispose(); } catch { }
+					try { (job?.NativeImage as IDisposable)?.Dispose(); } catch { }
+                    if(job!=null) lock(PathGate) PendingPaths.Remove(job.ReservedPath);
 				}
 			}
 		}
@@ -209,6 +240,9 @@ public static class IoWorkers
 			string pwd = ImageRecord.Current.FTP_Password ?? "";
 			string Root = (ImageRecord.Current.FTP_Root ?? "").Trim();
 			Root = Root + "/" + DateTime.Now.Year.ToString() + DateTime.Now.Month.ToString() + DateTime.Now.Day.ToString();
+            // Preserve the existing Raw FTP layout. Optional Deal images need a
+            // distinct location so PNG Raw/Deal cannot overwrite one another.
+            if(job.ImageKind=="Deal") Root+="/"+SafePathPart(job.CamName)+"/Deal";
 
 			if (string.IsNullOrWhiteSpace(host))
 			{

@@ -87,6 +87,10 @@ namespace Aron_V2
                 try
                 {
                 var backup=ReadBackupSettings();
+                _storageDraft?.Validate();
+                if(_storageDraft!=null) Current.Storage=_storageDraft.Copy();
+                if(_recoveryDraft!=null) Current.Recovery=_recoveryDraft.Copy();
+                if(_recoveryEnabled!=null) Current.Recovery.Enabled=_recoveryEnabled.Checked;
 				Current.EnableSave = chkEnable.Checked;
 				Current.Root = txtRoot.Text.Trim();
 
@@ -133,6 +137,8 @@ namespace Aron_V2
 
 		public class Settings
 		{
+            public ImageStorageOptions Storage { get; set; }
+            public CameraRecoveryOptions Recovery { get; set; } = new CameraRecoveryOptions();
 			public string Language { get; set; } = "en";
 			public bool ShowImageCleanupLog { get; set; } = false;
 			public bool EnableSave = true;            // 是否启用保存
@@ -161,78 +167,51 @@ namespace Aron_V2
 
 
 
-		public static int CleanupOldMinutes()
-		{
-			int deleted = 0;
-			try
-			{
-				int retentionMinutes = Current.GetRetentionMinutes();
-				if (retentionMinutes <= 0) return 0;
-
-				string root = SafeRoot();
-				if (!Directory.Exists(root)) return 0;
-
-				DateTime cutoff = DateTime.Now.AddMinutes(-retentionMinutes);
-
-				// 目录结构：root\job\cam\pos\yyyyMMdd\OK|NG
-				foreach (var jobDir in Directory.GetDirectories(root))
-				{
-					foreach (var camDir in Directory.GetDirectories(jobDir))
-					{
-						foreach (var posDir in Directory.GetDirectories(camDir))
-						{
-							foreach (var dateDir in Directory.GetDirectories(posDir))
-							{
-								string folderName = Path.GetFileName(dateDir); // yyyyMMdd
-								DateTime day;
-
-								if (!DateTime.TryParseExact(
-									folderName,
-									"yyyyMMdd",
-									System.Globalization.CultureInfo.InvariantCulture,
-									System.Globalization.DateTimeStyles.None,
-									out day))
-								{
-									continue;
-								}
-
-								// 只清理图片文件；同一日期目录内的图片可能有不同的保存时间。
-								foreach (var resultDir in Directory.GetDirectories(dateDir))
-								{
-									string resultName = Path.GetFileName(resultDir);
-									if (resultName != "OK" && resultName != "NG") continue;
-									foreach (var file in Directory.GetFiles(resultDir))
-									{
-										string ext = Path.GetExtension(file);
-										if (!string.Equals(ext, ".bmp", StringComparison.OrdinalIgnoreCase) &&
-											!string.Equals(ext, ".png", StringComparison.OrdinalIgnoreCase)) continue;
-										try
-										{
-											if (File.GetLastWriteTime(file) < cutoff)
-											{
-												File.Delete(file);
-												deleted++;
-											}
-										}
-										catch (Exception ex)
-										{
-											LogChangeEventArgs.Set("Log", "Delete image failed: " + file + " => " + ex.Message, Color.Red);
-										}
-									}
-									TryDeleteIfEmpty(resultDir);
-								}
-								TryDeleteIfEmpty(dateDir);
-							}
-						}
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				LogChangeEventArgs.Set("Log", "Cleanup failed: " + ex.Message, System.Drawing.Color.Red);
-			}
-			return deleted;
-		}
+        public static int CleanupOldMinutes()
+        {
+            int deleted=0;
+            try
+            {
+                var policy=Current.Storage??new ImageStorageOptions();
+                int minutes=Current.GetRetentionMinutes();
+                bool ageCleanup=policy.RetentionEnabled && minutes>0;
+                if(!ageCleanup && !policy.DiskCleanupEnabled)return 0;
+                string root=SafeRoot();if(!Directory.Exists(root))return 0;
+                DateTime cutoff=DateTime.Now.AddMinutes(-minutes);
+                var diskCandidates=new System.Collections.Generic.List<System.IO.FileInfo>();
+                var pending=new System.Collections.Generic.Stack<string>();pending.Push(root);
+                while(pending.Count>0)
+                {
+                    string dir=pending.Pop();
+                    if((File.GetAttributes(dir)&FileAttributes.ReparsePoint)!=0)continue;
+                    foreach(string child in Directory.GetDirectories(dir))pending.Push(child);
+                    string relative=Path.GetFullPath(dir).Substring(Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar).Length).TrimStart(Path.DirectorySeparatorChar);
+                    var parts=relative.Split(Path.DirectorySeparatorChar);
+                    bool managed=parts.Any(p=>p=="Raw"||p=="Deal") || (parts.Length==5 && (parts[4]=="OK"||parts[4]=="NG") && parts[3].Length==8 && parts[3].All(char.IsDigit));
+                    if(!managed)continue;
+                    foreach(string file in Directory.GetFiles(dir))
+                    {
+                        if((File.GetAttributes(file)&FileAttributes.ReparsePoint)!=0)continue;
+                        if(!new[]{".bmp",".png",".cdb"}.Contains(Path.GetExtension(file).ToLowerInvariant()))continue;
+                        try { if(ageCleanup && File.GetLastWriteTime(file)<cutoff){File.Delete(file);deleted++;}
+                            else if(policy.DiskCleanupEnabled)diskCandidates.Add(new FileInfo(file)); }
+                        catch(Exception ex){DiagnosticLogStore.Exception("Image retention "+file,ex);}
+                    }
+                }
+                if(policy.DiskCleanupEnabled)
+                {
+                    var drive=new DriveInfo(Path.GetPathRoot(Path.GetFullPath(root)));
+                    foreach(var file in diskCandidates.OrderBy(f=>f.LastWriteTimeUtc))
+                    {
+                        if(!drive.IsReady || drive.TotalSize<=0 || 100.0*(drive.TotalSize-drive.AvailableFreeSpace)/drive.TotalSize<policy.DiskUsagePercent)break;
+                        try { if((file.Attributes&FileAttributes.ReparsePoint)==0){file.Delete();deleted++;} }
+                        catch(Exception ex){DiagnosticLogStore.Exception("Image disk cleanup "+file.FullName,ex);}
+                    }
+                }
+            }
+            catch(Exception ex){LogChangeEventArgs.Set("Log","Cleanup failed: "+ex.Message,Color.Red);}
+            return deleted;
+        }
 
 		private static string SafeRoot()
 		{
@@ -283,6 +262,8 @@ namespace Aron_V2
 						Current.Language = UiLanguage.Normalize(cfg.Language);
 						Current.Root = cfg.Root;
 						Current.FormatMode = cfg.FormatMode;
+                        Current.Storage=cfg.Storage ?? new ImageStorageOptions { Format2D=cfg.FormatMode=="PNG"?"PNG":"BMP" };
+                        Current.Recovery=cfg.Recovery ?? new CameraRecoveryOptions();
 						Current.RetentionDays = cfg.RetentionDays;
 						Current.RetentionMinutes = cfg.RetentionMinutes;
 						Current.FTP_Host = cfg.FTP_Host;

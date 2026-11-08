@@ -29,8 +29,9 @@ namespace Aron_V2
             {
                 string directory = Path.Combine(Path.GetFullPath(root), job, camera.Name, position);
                 if (!CameraAcquisition.IsSdk(camera))
-                    EnsureFile(Path.Combine(directory, "Camera.vpp"), true, writeBlank ?? WriteBlank, created);
-                EnsureFile(Path.Combine(directory, "Inspection.vpp"), false, writeBlank ?? WriteBlank, created);
+                    EnsureFile(Path.Combine(directory, "Camera.vpp"), true, writeBlank ?? ((p,c)=>WriteBlank(p,c,false)), created);
+                bool is3D=CameraAcquisition.CategoryOf(camera)==CameraAcquisition.Sdk3D;
+                EnsureFile(Path.Combine(directory, "Inspection.vpp"), false, writeBlank ?? ((p,c)=>WriteBlank(p,c,is3D)), created);
             }
             return created;
         }
@@ -63,7 +64,7 @@ namespace Aron_V2
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        private static void WriteBlank(string path, bool camera)
+        private static void WriteBlank(string path, bool camera,bool is3D)
         {
             Load_Job.EnsureCognexInteropLoaded();
             if (camera)
@@ -81,6 +82,7 @@ namespace Aron_V2
                 using (var tool = new CogToolBlock())
                 {
                     InitializeInspectionInterface(tool);
+                    InitializeImageTools(tool,is3D);
                     SaveNew(tool, path);
                 }
             }
@@ -99,7 +101,28 @@ namespace Aron_V2
             }
             var result = new CogToolBlockTerminal("Result_Cam", typeof(string)); result.Value = "2"; tool.Outputs.Add(result);
             var send = new CogToolBlockTerminal("resultSend", typeof(string)); send.Value = string.Empty; tool.Outputs.Add(send);
+            tool.Outputs.Add(new CogToolBlockTerminal("ImageFileName",typeof(string)) { Value=string.Empty });
             return true;
+        }
+
+        internal static void InitializeImageTools(CogToolBlock tool,bool is3D)
+        {
+            if(tool.Tools.Count!=0) throw new InvalidOperationException("Image tools may only be added to a new empty VPP.");
+            var image=new Cognex.VisionPro.ImageProcessing.CogIPOneImageTool { Name="CogIPOneImageTool1" };
+            if(is3D)
+            {
+                using(var stream=typeof(BlankCameraVpp).Assembly.GetManifestResourceStream("Aron.RangeGreySplitter.vtt"))
+                {
+                    if(stream==null) throw new InvalidOperationException("VisionPro 3D splitter template is missing.");
+                    var splitter=(CogToolBlock)CogSerializer.LoadObjectFromStream(stream);
+                    splitter.Name="Cog3DRangeGreySplitterScript";
+                    tool.Tools.Add(splitter);
+                    splitter.DataBindings.Add("Inputs.Item[\"RangeGreyImage\"].Value",tool,"Inputs.Item[\"Input1\"].Value");
+                    image.DataBindings.Add("InputImage",splitter,"Outputs.Item[\"GreyImage\"].Value");
+                }
+            }
+            else image.DataBindings.Add("InputImage",tool,"Inputs.Item[\"Input1\"].Value");
+            tool.Tools.Add(image);
         }
 
         private static void SaveNew(object tool, string path)

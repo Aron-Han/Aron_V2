@@ -158,7 +158,25 @@ namespace Aron_V2
 			}
 		}
 
-		private static T ReadVpp<T>(string path) where T : class
+        internal static void ReloadCameraBinding(string job,int channel,string cam,string pos)
+        {
+            lock(_jobSwitchLock)
+            {
+                // Deserialize replacements first. A broken file must not destroy the live cached tool.
+                CogToolBlock next=ReadVpp<CogToolBlock>(VppPath.Tb(job,cam,pos),false);
+                CogAcqFifoTool acq=null;
+                try { if(!CameraIntegration.CameraAcquisition.IsSdk(CameraIntegration.CameraAcquisition.Find(Global.CurrentConfig,job,cam))) acq=ReadVpp<CogAcqFifoTool>(VppPath.Acq(job,cam,pos),false); }
+                catch { next.Dispose(); throw; }
+                string key=VppCache.Key(job,channel,cam,pos);
+                CogToolBlock previous;CogAcqFifoTool previousAcq;
+                VppCache.Tb.TryGetValue(key,out previous);VppCache.Acq.TryGetValue(key,out previousAcq);
+                VppCache.Tb[key]=next;
+                if(acq!=null) VppCache.Acq[key]=acq;else VppCache.Acq.Remove(key);
+                previous?.Dispose();previousAcq?.Dispose();
+            }
+        }
+
+		private static T ReadVpp<T>(string path,bool reportToPanel=true) where T : class
 		{
 			if (!System.IO.File.Exists(path)) throw new System.IO.FileNotFoundException("VPP file not found: " + path, path);
 			EnsureCognexInteropLoaded();
@@ -172,8 +190,8 @@ namespace Aron_V2
 				var assemblies = AppDomain.CurrentDomain.GetAssemblies()
 					.Where(a => a.GetName().Name.StartsWith("Cognex.VisionPro", StringComparison.OrdinalIgnoreCase))
 					.Select(a => a.FullName + " : " + a.Location);
-				LogChangeEventArgs.Set("Log", "VPP: " + path + "\r\nCognex runtime assemblies:\r\n" + string.Join("\r\n", assemblies), Color.Red);
-				if (root is System.IO.FileLoadException file)
+				if(reportToPanel) LogChangeEventArgs.Set("Log", "VPP: " + path + "\r\nCognex runtime assemblies:\r\n" + string.Join("\r\n", assemblies), Color.Red);
+				if (reportToPanel && root is System.IO.FileLoadException file)
 					LogChangeEventArgs.Set("Log", "Assembly binding failure: " + file.FileName + "\r\n" + file.FusionLog, Color.Red);
 				throw;
 			}

@@ -13,6 +13,8 @@ namespace Aron_V2
         {
             foreach (string name in new[] { "JobID", "PosID", "SN" })
                 if (!tool.Inputs.Contains(name)) tool.Inputs.Add(new CogToolBlockTerminal(name, typeof(string)));
+            // Upgrade only the detached editor draft of legacy VPPs. Never rewrite disk on load.
+            if(!tool.Outputs.Contains("ImageFileName")) tool.Outputs.Add(new CogToolBlockTerminal("ImageFileName",typeof(string)) { Value=string.Empty });
         }
         internal static void ApplyContext(CogToolBlock tool, string job, string position, string serial)
         {
@@ -32,6 +34,7 @@ namespace Aron_V2
         {
             var errors = new List<string>();
             if (tool == null) { errors.Add("No algorithm loaded."); return errors; }
+            if(InspectionImageStorage.DealTool(tool)==null) errors.Add("Missing tool: CogIPOneImageTool");
             foreach (string name in new[] { "JobID", "PosID", "SN" })
             {
                 if (!tool.Inputs.Contains(name)) errors.Add("Missing input: " + name);
@@ -49,11 +52,12 @@ namespace Aron_V2
                 if (!valid) errors.Add("Input type mismatch: [" + index + "] " + input.Name + " (" + type.Name + ")");
             }
             var names = new HashSet<string>(tool.Outputs.Cast<CogToolBlockTerminal>().Select(t => t.Name), StringComparer.Ordinal);
-            foreach (string name in new[] { "Result_Cam", "resultSend" }.Concat(requiredOutputs ?? Enumerable.Empty<string>()).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal))
+            foreach (string name in new[] { "Result_Cam", "resultSend", "ImageFileName" }.Concat(requiredOutputs ?? Enumerable.Empty<string>()).Where(n => !string.IsNullOrWhiteSpace(n)).Distinct(StringComparer.Ordinal))
             {
                 if (!names.Contains(name)) { errors.Add("Missing output: " + name); continue; }
                 Type type = tool.Outputs[name].ValueType;
                 if (name == "resultSend" && type != typeof(string) && type != typeof(object)) errors.Add("Output type mismatch: " + name + " (expected String)");
+                if (name == "ImageFileName" && type != typeof(string)) errors.Add("Output type mismatch: " + name + " (expected String)");
                 if (name == "Result_Cam" && type != typeof(string) && type != typeof(object) && !IntegerType(type)) errors.Add("Output type mismatch: " + name + " (expected String or integer)");
             }
             // Inspect declared interfaces only. Never Run, acquire an image,
@@ -97,6 +101,7 @@ namespace Aron_V2
         internal static string FailureMessage(IEnumerable<string> errors)
         {
             bool chinese = UiLanguage.Current == "zh-CN";
+            if(chinese) errors=errors.Select(e=>e.Replace("Missing tool:","缺少工具："));
             string detail = string.Join("\r\n", errors.Select(e => "• " + (chinese ? e.Replace("Missing output:", "缺少输出引脚：").Replace("Missing input:", "缺少输入引脚：").Replace("Missing input slot:", "缺少输入引脚位置：").Replace("Input renamed or reordered:", "输入引脚被改名或顺序改变：").Replace("Input type mismatch:", "输入引脚类型错误：").Replace("Output type mismatch:", "输出引脚类型错误：") : e)));
             return (chinese ? "保存失败：算法接口校验未通过。\r\n" : "Save blocked: algorithm interface validation failed.\r\n") + detail +
                 (chinese ? "\r\n\r\n请恢复引脚及其连接后重试。原 VPP 文件和运行缓存未替换。" : "\r\n\r\nRestore the terminals and their connections, then retry. The existing VPP file and runtime cache were not replaced.");

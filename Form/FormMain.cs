@@ -364,7 +364,7 @@ namespace Aron_V2
 			}
 		}
 
-		private string VerifyStartupCameras()
+		private string VerifyStartupCameras(bool recovering = false)
 		{
 			var activeCameras = Global.CamGeneral
 				.Where(kv => kv.Value != null && (kv.Value.MainUsed == "1" || kv.Value.SecondUsed == "1"))
@@ -400,6 +400,8 @@ namespace Aron_V2
 
 			foreach (string camName in activeCameras)
 			{
+                if(SkipHealthyRecovery(camName,recovering)) continue;
+                InvalidateRecoveryHealth(camName);
 				var sdkBinding = Global.CamGeneral.Where(kv => kv.Value != null && (kv.Value.MainUsed == "1" || kv.Value.SecondUsed == "1"))
 					.Select(kv => kv.Key.Split('.')).Where(p => p.Length >= 3 && string.Equals(p[1], camName, StringComparison.OrdinalIgnoreCase))
 					.Select(p => CameraIntegration.CameraAcquisition.Find(Global.CurrentConfig, p[0], camName))
@@ -411,6 +413,7 @@ namespace Aron_V2
 						var image = CameraIntegration.CameraAcquisition.Capture(sdkBinding);
 						(image as IDisposable)?.Dispose();
 						LogChangeEventArgs.Set("Log", camName + " SDK startup capture passed (" + sdkBinding.IpAddress + ").", Color.Green);
+                        MarkRecoveryHealthy(camName);
 					}
 					catch (Exception ex) { return camName + " SDK startup capture failed: " + ex.GetBaseException().Message; }
 					continue;
@@ -442,6 +445,7 @@ namespace Aron_V2
 							(entry.Value.RunStatus == null ? "RunStatus is null" : entry.Value.RunStatus.Message);
 					}
 					LogChangeEventArgs.Set("Log", camName + " startup capture passed.", Color.Green);
+                    MarkRecoveryHealthy(camName);
 				}
 				catch (Exception ex)
 				{
@@ -477,12 +481,15 @@ namespace Aron_V2
 		}
 
 
-		private void RequestCameraRestart(string reason)
+		private void RequestCameraRestart(string reason,string failedCamera=null)
 		{
 			if (_cameraRecoveryStopping || IsDisposed) return;
+            if(failedCamera!=null) InvalidateRecoveryHealth(failedCamera);
+            else if(_cameraValidationComplete) InvalidateRecoveryHealth(null);
 			_cameraValidationComplete = false;
 			if (_communicationService != null) _communicationService.SetCameraReady(false);
-			LogChangeEventArgs.Set("Log", "Camera offline; communication stopped until camera recovery: " + reason, Color.Red);
+            DiagnosticLogStore.Stage("Camera recovery",reason);
+            if(!_recoveryAnnounced) { RecoveryStatus(UiLanguage.Text("Camera offline; waiting for recovery. ")+reason,Color.Orange); _recoveryAnnounced=true; }
 			Action schedule = () =>
 			{
 				if (IsDisposed || Disposing) return;
@@ -494,10 +501,12 @@ namespace Aron_V2
 					_cameraRecoveryTimer = new System.Windows.Forms.Timer { Interval = 5000 };
 					_cameraRecoveryTimer.Tick += (s, e) =>
 					{
-						if (!_cameraValidationComplete && _licenseOk)
+                        _cameraRecoveryTimer.Interval=Math.Max(5,Math.Min(3600,RecoveryOptions.IntervalSeconds))*1000;
+						if (!_cameraValidationComplete && _licenseOk && RecoveryOptions.Enabled)
 							button3_Click(button3, EventArgs.Empty);
 					};
 				}
+                _cameraRecoveryTimer.Interval=Math.Max(5,Math.Min(3600,RecoveryOptions.IntervalSeconds))*1000;
 				_cameraRecoveryTimer.Start();
 			};
 			if (IsHandleCreated && InvokeRequired) BeginInvoke(schedule);
@@ -713,6 +722,14 @@ namespace Aron_V2
 
 		private void StartProfinetCommunication()
 		{
+            var existing=_communicationService as ProfinetVisionCommService;
+            if(existing!=null && existing.IsInitialized)
+            {
+                // Mapping helpers load the saved table for every input/result.
+                // Reapplying the same protocol must not recreate the CC24 port/NDM.
+                LogChangeEventArgs.Set("Log",UiLanguage.Text("Profinet mappings applied; existing connection retained."),Color.Black);
+                RefreshCommunicationState();return;
+            }
 			StopS7Communication();
 			_communicationService = new ProfinetVisionCommService();
 			_communicationService.SetOnline(_runOnline);
@@ -1634,6 +1651,8 @@ namespace Aron_V2
             using (DiagnosticLogStore.BeginOperation("Inspection CH=" + Channel + " Job=" + JobID + " Pos=" + PosID))
             {
 			PosID = NormalizeInspectionPosition(PosID);
+            var previousAcquisitionCycle=_acquisitionCycle.Value;
+            _acquisitionCycle.Value=BeginAcquisitionCycle(JobID,PosID,Channel);
 
 			string ResultTotal = "2";
 			Global.ResultTotal_Cam[int.Parse(CamN) - 1] = ResultTotal;
@@ -1651,6 +1670,7 @@ namespace Aron_V2
 			{
 				LogChangeEventArgs.Set("Log", "Trigger Failed:" + e.ToString(), Color.Red);
 			}
+            finally { _acquisitionCycle.Value=previousAcquisitionCycle; }
             }
 		}
 
@@ -1781,8 +1801,22 @@ namespace Aron_V2
 				"Log",
 				"Camera " + CamN + " trigger failed: " + Message + ". Automatic recovery scheduled.",
 				Color.Red);
-		RequestCameraRestart(CamN + ": " + Message);
+		RequestCameraRestart(CamN + ": " + Message,CamN);
 		}
+
+        private static string FormatInspectionOutputLog(CogToolBlock tool, short resultCode, int channel, string cam)
+        {
+            var fields = new List<string>();
+            for (int i = 0; i < tool.Outputs.Count; i++)
+            {
+                var pin = tool.Outputs[i];
+                object value = pin.Value;
+                string text = value == null ? "null" : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+                fields.Add(pin.Name + "=" + (text ?? "null").Replace("\r", "\\r").Replace("\n", "\\n"));
+            }
+            return "Result: " + (resultCode == 2 ? "NG" : "OK") + "; CH=" + channel
+                + ", " + cam + "; " + string.Join(", ", fields);
+        }
 
         private static S7InspectionOutputs SnapshotS7Outputs(CogToolBlock tool, string job, string cam, string pos)
         {
@@ -2054,6 +2088,7 @@ namespace Aron_V2
             DiagnosticLogStore.Stage(diagnosticContext, "Acquire begin");
 			if (!TryAcquireInspectionImage(camera, camName, jobId, posName, out image))
 			{
+                _acquisitionCycle.Value?.Failed();
                 DiagnosticLogStore.Stage(diagnosticContext, "Acquire returned false");
                 PublishPluginFailure(jobId, camName, posName, channel);
 				if (onFinished != null)
@@ -2081,6 +2116,8 @@ namespace Aron_V2
 				return;
 			}
 
+            // Successful image acquisition, before parameter application or tool.Run().
+            _acquisitionCycle.Value?.Acquired((onCommunicationMainResult==null?"Second|":"Main|")+camName);
 			// Keep the original Cognex/LMI image, not the display bitmap.  The
 			// algorithm editor uses this cache only for local parameter tuning.
 			// It is never persisted to Inspection.vpp or sent to PLC logic.
@@ -2141,18 +2178,22 @@ namespace Aron_V2
 					});
 
 					LogChangeEventArgs.Set("Log",
-						"Communication main result cached. CH=" + mainCh.ToString()
-						+ ", " + camName
-						+ ", Result=" + resultCode.ToString()
-						+ ", X=" + resultX.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)
-						+ ", Y=" + resultY.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture)
-						+ ", A=" + resultA.ToString("0.######", System.Globalization.CultureInfo.InvariantCulture),
+						FormatInspectionOutputLog(tool, resultCode, mainCh, camName),
 						Color.Black);
 				}
 				UpdateStatsByResult(camName, Recent_Reult);
                 DiagnosticLogStore.Stage(diagnosticContext, "Outputs read; Result_Cam=" + Recent_Reult);
                 pluginSnapshot = CreatePluginSnapshot(tool, jobId, camName, posName, channel, Recent_Reult, pluginCapturedAt);
-				LogChangeEventArgs.Set("Log", camName + ":Inspection vpp Complete", Color.Black);
+				if (!_manualLocalOnly.Value && !Global.Manual_Trigger_Lock[channel] && ImageRecord.Current.EnableSave)
+                {
+                    try
+                    {
+                        string saved=InspectionImageStorage.Queue(tool,image,jobId,camName,posName,inspectionSerial,Recent_Reult!="2");
+                        if(pluginSnapshot!=null) pluginSnapshot=pluginSnapshot.WithImagePath(saved);
+                    }
+                    catch(Exception ex) { DiagnosticLogStore.Exception("Queue inspection image "+jobId+"/"+camName+"/"+posName,ex); LogChangeEventArgs.Set("Log",UiLanguage.Text("Image save failed: ")+ex.Message,Color.Red); }
+                }
+				LogChangeEventArgs.Set("Log", UiLanguage.Text("Inspection result:")+" "+jobId+"/"+camName+"/"+posName+" = "+Recent_Reult, Color.Black);
 			}
 
 			try
@@ -2163,49 +2204,7 @@ namespace Aron_V2
 					ImageShow(camName.Substring(3, 1), camera, tool);
 				}));
 
-				// UI 外部做非 UI 的异步工作（更清晰，也更安全）
-				// Save Image to Local
-				if (!_manualLocalOnly.Value && !Global.Manual_Trigger_Lock[channel] && ImageRecord.Current.EnableSave)
-				{
-					try
-					{
-						bool okFlag = (Recent_Reult != "2");
-						string sn = Global.PartCode[channel];
-
-						string root = string.IsNullOrWhiteSpace(ImageRecord.Current.Root)
-							? System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Images")
-							: ImageRecord.Current.Root.TrimEnd('\\', '/');
-
-						string date = DateTime.Now.ToString("yyyyMMdd");
-						string okNg = okFlag ? "OK" : "NG";
-						string fileNameNoExt = $"{camName + "_" + posName}_{DateTime.Now:HHmmss_fff}_{(sn ?? "").Trim()}_{okNg}";
-
-						string formatMode = (ImageRecord.Current.FormatMode ?? "BMP").ToUpperInvariant();
-						string ext = (formatMode == "PNG") ? ".png" : ".bmp";
-
-						string dir = System.IO.Path.Combine(root, jobId, camName, posName, date, okNg);
-						string fullPath = System.IO.Path.Combine(dir, fileNameNoExt + ext);
-                        if (pluginSnapshot != null) pluginSnapshot = pluginSnapshot.WithImagePath(fullPath);
-
-						var bmp = VpImageUtil.ToManagedBitmap(image);
-
-						IoWorkers.EnqueueImage(new IoWorkers.SaveImageTask
-						{
-							JobId = jobId,
-							CamName = camName,
-							PosName = posName,
-							Serial = sn,
-							OkFlag = okFlag,
-							FullPath = fullPath,
-							Ext = ext,
-							Bmp = bmp
-						});
-					}
-					catch (Exception ex)
-					{
-						LogChangeEventArgs.Set("Log", "Queue image failed: " + ex.Message, System.Drawing.Color.Red);
-					}
-				}
+				// Image snapshots are queued under the inspection lock above.
 			}
 			catch { }
 			// 4) 读取配置并把“本通道”的输出写入 240B 缓冲（仅主相机）
@@ -2374,7 +2373,7 @@ namespace Aron_V2
 				ImageRecord.LoadSettings();
 				Global.Save_Image_Root = ImageRecord.Current.Root;
 
-				if (ImageRecord.Current.GetRetentionMinutes() > 0)
+				if (ImageRecord.Current.GetRetentionMinutes() > 0 || (ImageRecord.Current.Storage != null && ImageRecord.Current.Storage.DiskCleanupEnabled))
 				{
 					int deleted = ImageRecord.CleanupOldMinutes();
 					if (ImageRecord.Current.ShowImageCleanupLog)
@@ -2892,7 +2891,7 @@ namespace Aron_V2
 
 			try
 			{
-				LogChangeEventArgs.Set("Log", "Start VisionPro camera recovery...", Color.Black);
+				// Repeated retry steps belong to diagnostics, not the operator log.
 				_cameraValidationComplete = false;
 				if (_communicationService != null) _communicationService.SetCameraReady(false);
 
@@ -2904,7 +2903,7 @@ namespace Aron_V2
 
 				if (!_cameraValidationComplete)
 				{
-					string failure = await Task.Run(() => VerifyStartupCameras());
+					string failure = await Task.Run(() => VerifyStartupCameras(true));
 					if (_cameraRecoveryStopping || IsDisposed || !_licenseOk) return;
 					if (!string.IsNullOrEmpty(failure))
 					{
@@ -2913,7 +2912,7 @@ namespace Aron_V2
 					}
 					_cameraValidationComplete = true;
 					Program.ResetCameraRestartCount();
-					LogChangeEventArgs.Set("Log", "Manual camera recovery passed; communication is now allowed.", Color.Green);
+                    RecoveryStatus(UiLanguage.Text("Recovery completed."),Color.Green);_recoveryAnnounced=false;
 					if (_communicationService == null)
 						InitCommunication();
 					else
@@ -2928,7 +2927,7 @@ namespace Aron_V2
 			}
 			catch (Exception ex)
 			{
-				LogChangeEventArgs.Set("Log", "VisionPro camera recovery failed: " + ex.ToString(), Color.Red);
+                DiagnosticLogStore.Exception("Camera recovery",ex);
 				RequestCameraRestart(ex.Message);
 			}
 			finally
@@ -2940,64 +2939,13 @@ namespace Aron_V2
 
 		private void RecoverVisionProCameras()
 		{
-			List<SemaphoreSlim> lockedGates = new List<SemaphoreSlim>();
-
-			try
-			{
-				// 1. 暂停所有通道触发，避免恢复过程中 PLC 又触发拍照
-				for (int i = 0; i < _chGates.Length; i++)
-				{
-					_chGates[i].Wait();
-					lockedGates.Add(_chGates[i]);
-				}
-
-				// 2. 重新读取配置
-				Global.CurrentConfig = XmlConfigHelper.Load(Global.ParameterCogfig);
-
-				// 3. 重新加载当前 4 个通道对应的 Job
-				int configuredChannelCount = CommunicationConfigHelper.GetEffectiveChannelCount(CommunicationConfigHelper.Load());
-				for (int ch = 0; ch < configuredChannelCount; ch++)
-				{
-					string jobId = Global.Model_JobID[ch];
-
-					if (string.IsNullOrWhiteSpace(jobId))
-						jobId = "Job1";
-
-					try
-					{
-						LogChangeEventArgs.Set("Log", $"Reload VPP/AcqFifo for Channel {ch}, {jobId}...", Color.Black);
-
-						// 关键：重新加载该通道当前 Job 下所有 Pos 的 VPP 和 AcqFifo
-						Load_Job.LoadVPP_ForChannel_AllPos(ch, jobId);
-
-						LogChangeEventArgs.Set("Log", $"Reload Channel {ch} {jobId} OK.", Color.Green);
-					}
-					catch (Exception exCh)
-					{
-						LogChangeEventArgs.Set("Log", $"Reload Channel {ch} failed: {exCh.Message}", Color.Red);
-					}
-				}
-
-				// 4. UI 相机状态先恢复成 Ready，下一次触发再判断真实 OK/NG
-				if (!this.IsDisposed && this.IsHandleCreated)
-				{
-					this.BeginInvoke(new Action(() =>
-					{
-						for (int i = 0; i < camViews.Count; i++)
-						{
-							camViews[i].SetButton_CamStatus(Color.Gainsboro, "Cam" + (i + 1) + ":Ready");
-						}
-					}));
-				}
-			}
-			finally
-			{
-				// 5. 释放通道锁，恢复 PLC 触发
-				for (int i = lockedGates.Count - 1; i >= 0; i--)
-				{
-					lockedGates[i].Release();
-				}
-			}
+            var held=new List<SemaphoreSlim>();
+            try
+            {
+                foreach(var gate in _chGates) { gate.Wait();held.Add(gate); }
+                ReloadRecoveryTools();
+            }
+            finally { for(int i=held.Count-1;i>=0;i--) held[i].Release(); }
 		}
 
 		private void settingToolStripMenuItem1_Click(object sender, EventArgs e)
